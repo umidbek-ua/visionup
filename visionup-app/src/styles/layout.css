@@ -1,0 +1,57 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  color: #ffffff;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(124, 58, 237, 0.16), transparent 34%),
+    #070b16;
+}
+
+.content {
+  flex: 1;
+  padding: clamp(28px, 3.2vw, 48px);
+  overflow: auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #67e8f9;
+  font-size: 0.86em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.topbar h2 {
+  margin: 0;
+  font-size: clamp(3.2rem, 5vw, 5.2rem);
+  line-height: 0.98;
+  font-weight: 560;
+  letter-spacing: -0.055em;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  gap: 24px;
+}
+
+.main-panel,
+.status-panel {
+  min-height: 520px;
+  border-radius: 30px;
+  padding: clamp(24px, 2.8vw, 36px);
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.35);
+}
