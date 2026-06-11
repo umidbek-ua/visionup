@@ -11,19 +11,54 @@ import ShortcutsPage from "./pages/ShortcutsPage";
 import ReadingPage from "./pages/ReadingPage";
 import SettingsPage from "./pages/SettingsPage";
 
-import { MenuItem, Section } from "./types/app";
+import { MenuItem, Profile, Section } from "./types/app";
 
 const menuItems: MenuItem[] = [
-  { id: "zoom", label: "Zoom", description: "Fast and smooth magnification" },
   { id: "profiles", label: "Profiles", description: "Low vision work modes" },
+  { id: "zoom", label: "Zoom", description: "Fast and smooth magnification" },
   { id: "shortcuts", label: "Shortcuts", description: "Fast keyboard actions" },
   { id: "reading", label: "Reading", description: "Comfortable text reading" },
   { id: "settings", label: "Settings", description: "App preferences" },
 ];
 
+const initialProfiles: Profile[] = [
+  {
+    id: "reading",
+    name: "Reading Profile",
+    description: "Large text, comfortable reading mode, reduced eye strain.",
+    shortcutKey: "1",
+    createdAt: "2026-06-09 09:00",
+    modifiedAt: "2026-06-09 09:20",
+    deletedAt: "-",
+  },
+  {
+    id: "coding",
+    name: "Coding Profile",
+    description: "Balanced zoom, high contrast, focused workspace.",
+    shortcutKey: "2",
+    createdAt: "2026-06-09 09:10",
+    modifiedAt: "2026-06-09 10:05",
+    deletedAt: "-",
+  },
+  {
+    id: "browsing",
+    name: "Browsing Profile",
+    description: "Smooth zoom and comfortable web browsing settings.",
+    shortcutKey: "3",
+    createdAt: "2026-06-09 09:30",
+    modifiedAt: "2026-06-09 09:45",
+    deletedAt: "-",
+  },
+];
+
 function App() {
-  const [activeSection, setActiveSection] = useState<Section>("zoom");
+  const [activeSection, setActiveSection] = useState<Section>("profiles");
   const [uiScale, setUiScale] = useState(1);
+  const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
+  const [selectedProfileId, setSelectedProfileId] = useState<string>("coding");
+  const [activeProfileId, setActiveProfileId] = useState<string>("coding");
+
+  const hasProfiles = profiles.length > 0;
 
   const increaseUiScale = () => {
     setUiScale((scale) => Math.min(1.6, Number((scale + 0.1).toFixed(1))));
@@ -35,6 +70,15 @@ function App() {
 
   const resetUiScale = () => {
     setUiScale(1);
+  };
+
+  const handleSectionChange = (section: Section) => {
+    if (!hasProfiles && section !== "profiles") {
+      setActiveSection("profiles");
+      return;
+    }
+
+    setActiveSection(section);
   };
 
   useEffect(() => {
@@ -71,7 +115,8 @@ function App() {
         uiScale={uiScale}
         activeSection={activeSection}
         menuItems={menuItems}
-        onSectionChange={setActiveSection}
+        hasProfiles={hasProfiles}
+        onSectionChange={handleSectionChange}
       />
 
       <section className="content">
@@ -79,8 +124,18 @@ function App() {
 
         <section className="dashboard-grid">
           <div className="main-panel">
+            {activeSection === "profiles" && (
+              <ProfilesPage
+                profiles={profiles}
+                setProfiles={setProfiles}
+                selectedProfileId={selectedProfileId}
+                setSelectedProfileId={setSelectedProfileId}
+                activeProfileId={activeProfileId}
+                setActiveProfileId={setActiveProfileId}
+              />
+            )}
+
             {activeSection === "zoom" && <ZoomPage />}
-            {activeSection === "profiles" && <ProfilesPage />}
             {activeSection === "shortcuts" && <ShortcutsPage />}
             {activeSection === "reading" && <ReadingPage />}
             {activeSection === "settings" && <SettingsPage />}

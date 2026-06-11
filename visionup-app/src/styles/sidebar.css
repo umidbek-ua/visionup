@@ -99,3 +99,28 @@
   border-color: #38bdf8;
   background: rgba(56, 189, 248, 0.16);
 }
+
+.menu-item.requires-profile:not(.active) {
+  opacity: 0.72;
+}
+
+.menu-item.requires-profile:not(.active)::after {
+  content: "Profile required";
+  display: block;
+  margin-top: 8px;
+  color: #facc15;
+  font-size: 0.82em;
+  font-weight: 800;
+}
+
+.menu-item:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.menu-item:disabled:hover {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.04);
+}

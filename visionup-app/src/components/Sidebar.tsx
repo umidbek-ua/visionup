@@ -4,6 +4,7 @@ interface SidebarProps {
   uiScale: number;
   activeSection: Section;
   menuItems: MenuItem[];
+  hasProfiles: boolean;
   onSectionChange: (section: Section) => void;
 }
 
@@ -11,6 +12,7 @@ function Sidebar({
   uiScale,
   activeSection,
   menuItems,
+  hasProfiles,
   onSectionChange,
 }: SidebarProps) {
   return (
@@ -31,18 +33,21 @@ function Sidebar({
       </div>
 
       <nav className="menu">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            className={`menu-item ${
-              activeSection === item.id ? "active" : ""
-            }`}
-            onClick={() => onSectionChange(item.id)}
-          >
-            <span>{item.label}</span>
-            <small>{item.description}</small>
-          </button>
-        ))}
+        {menuItems.map((item) => {
+          const isLocked = !hasProfiles && item.id !== "profiles";
+
+          return (
+            <button
+              key={item.id}
+              disabled={isLocked}
+              className={`menu-item ${activeSection === item.id ? "active" : ""}`}
+              onClick={() => onSectionChange(item.id)}
+            >
+              <span>{item.label}</span>
+              <small>{item.description}</small>
+            </button>
+          );
+        })}
       </nav>
     </aside>
   );

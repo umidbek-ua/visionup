@@ -1,6 +1,6 @@
 export type Section =
-  | "zoom"
   | "profiles"
+  | "zoom"
   | "shortcuts"
   | "reading"
   | "settings";
@@ -11,4 +11,14 @@ export interface MenuItem {
   id: Section;
   label: string;
   description: string;
+}
+
+export interface Profile {
+  id: string;
+  name: string;
+  description: string;
+  shortcutKey: string;
+  createdAt: string;
+  modifiedAt: string;
+  deletedAt: string;
 }
