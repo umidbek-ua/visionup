@@ -4,6 +4,7 @@ type ZoomType = "Full Screen" | "Picture-in-Picture" | "Zoom Window";
 
 function ZoomPage() {
   const [zoomType, setZoomType] = useState<ZoomType>("Full Screen");
+  const [maxZoom, setMaxZoom] = useState(300);
 
   return (
     <>
@@ -30,23 +31,46 @@ function ZoomPage() {
       </section>
 
       <section className="zoom-mode-panel">
-        <h3>Fast Zoom</h3>
-        <p>Use fixed shortcut levels for fast and predictable zoom control.</p>
+        <div className="zoom-section-title-row">
+          <div>
+            <h3>Fast Zoom</h3>
+            <p>
+              Set one maximum zoom value. VisionUp splits it into 10 fast
+              shortcut levels.
+            </p>
+          </div>
+
+          <span className="value-pill">{maxZoom}%</span>
+        </div>
+
+        <div className="zoom-max-control">
+          <label>Max Zoom</label>
+
+          <input
+            type="range"
+            min="100"
+            max="1000"
+            step="50"
+            value={maxZoom}
+            onChange={(event) => setMaxZoom(Number(event.target.value))}
+          />
+        </div>
 
         <div className="zoom-shortcut-note">
-          <span>Shortcut</span>
-          <strong>⌘ + Shift + 0-9</strong>
+          <span>Fast Zoom Shortcut</span>
+          <strong>⌥ + Shift + 0-9</strong>
         </div>
 
         <div className="fast-zoom-grid">
           {Array.from({ length: 10 }).map((_, index) => {
             const key = index === 9 ? "0" : String(index + 1);
-            const value = index === 9 ? "100%" : `${(index + 1) * 10}%`;
+            const step = index === 9 ? 10 : index + 1;
+            const value = Math.round((maxZoom / 10) * step);
 
             return (
               <div className="fast-zoom-card" key={key}>
-                <span>{value}</span>
-                <strong>⌘ + Shift + {key}</strong>
+                <span>{value}%</span>
+                <strong>⌥ + Shift + {key}</strong>
               </div>
             );
           })}

@@ -11,44 +11,28 @@ interface ShortcutItem {
 
 const initialShortcuts: ShortcutItem[] = [
   {
-    id: "fast-zoom-in",
+    id: "fast-zoom-levels",
     group: "Zoom",
-    action: "Fast Zoom In",
-    defaultShortcut: "⌘ + Shift + +",
-    fixedKeys: "⌘ + Shift +",
-    customKey: "+",
+    action: "Fast Zoom Levels",
+    defaultShortcut: "⌥ + Shift + 0-9",
+    fixedKeys: "Fixed",
+    customKey: "",
   },
   {
-    id: "fast-zoom-out",
+    id: "smooth-zoom",
     group: "Zoom",
-    action: "Fast Zoom Out",
-    defaultShortcut: "⌘ + Shift + -",
-    fixedKeys: "⌘ + Shift +",
-    customKey: "-",
+    action: "Smooth Zoom",
+    defaultShortcut: "⌘ + Mouse Scroll",
+    fixedKeys: "Fixed",
+    customKey: "",
   },
   {
-    id: "smooth-zoom-in",
+    id: "zoom-type",
     group: "Zoom",
-    action: "Smooth Zoom In",
-    defaultShortcut: "⌘ + +",
-    fixedKeys: "⌘ +",
-    customKey: "+",
-  },
-  {
-    id: "smooth-zoom-out",
-    group: "Zoom",
-    action: "Smooth Zoom Out",
-    defaultShortcut: "⌘ + -",
-    fixedKeys: "⌘ +",
-    customKey: "-",
-  },
-  {
-    id: "zoom-interval",
-    group: "Zoom",
-    action: "Change Zoom Interval",
-    defaultShortcut: "⌘ + Option + I",
+    action: "Change Zoom Type",
+    defaultShortcut: "⌘ + Option + Z",
     fixedKeys: "⌘ + Option +",
-    customKey: "I",
+    customKey: "Z",
   },
   {
     id: "reading-profile",
@@ -115,6 +99,9 @@ function ShortcutsPage() {
     );
   };
 
+  const isFixedShortcut = (shortcut: ShortcutItem) =>
+    shortcut.id === "fast-zoom-levels" || shortcut.id === "smooth-zoom";
+
   return (
     <>
       <div className="shortcuts-header">
@@ -148,20 +135,20 @@ function ShortcutsPage() {
                       {shortcut.defaultShortcut}
                     </div>
 
-                    {shortcut.group === "Zoom" && shortcut.id !== "zoom-interval" ? (
-  <div className="readonly-shortcut">Fixed</div>
-) : (
-  <div className="custom-shortcut">
-    <span>{shortcut.fixedKeys}</span>
-    <input
-      value={shortcut.customKey}
-      onChange={(event) =>
-        updateShortcut(shortcut.id, event.target.value)
-      }
-      aria-label={`${shortcut.action} custom key`}
-    />
-  </div>
-)}
+                    {isFixedShortcut(shortcut) ? (
+                      <div className="readonly-shortcut">Fixed</div>
+                    ) : (
+                      <div className="custom-shortcut">
+                        <span>{shortcut.fixedKeys}</span>
+                        <input
+                          value={shortcut.customKey}
+                          onChange={(event) =>
+                            updateShortcut(shortcut.id, event.target.value)
+                          }
+                          aria-label={`${shortcut.action} custom key`}
+                        />
+                      </div>
+                    )}
                   </div>
                 ))}
             </div>
