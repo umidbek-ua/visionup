@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
-import { Profile } from "../types/app";
+import { useRef, useState } from "react";
+import { Profile, Section } from "../types/app";
 
-type SortField = "createdAt" | "modifiedAt" | "deletedAt";
-type SortDirection = "asc" | "desc";
+import ZoomPage from "./ZoomPage";
+import ShortcutsPage from "./ShortcutsPage";
+import ReadingPage from "./ReadingPage";
+import SettingsPage from "./SettingsPage";
 
 interface ProfilesPageProps {
+  activeSection: Section;
   profiles: Profile[];
   setProfiles: React.Dispatch<React.SetStateAction<Profile[]>>;
   selectedProfileId: string;
@@ -18,6 +21,7 @@ function getNow() {
 }
 
 function ProfilesPage({
+  activeSection,
   profiles,
   setProfiles,
   selectedProfileId,
@@ -25,56 +29,26 @@ function ProfilesPage({
   activeProfileId,
   setActiveProfileId,
 }: ProfilesPageProps) {
-  const [filterProfile, setFilterProfile] = useState<"all" | string>("all");
-  const [sortField, setSortField] = useState<SortField>("modifiedAt");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newProfileName, setNewProfileName] = useState("");
-  const [newProfileDescription, setNewProfileDescription] = useState("");
-  const [message, setMessage] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const selectedProfile = profiles.find(
-    (profile) => profile.id === selectedProfileId
-  );
+  const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId);
+  const isSelectedProfileActive = selectedProfileId === activeProfileId;
 
-  const historyRows = useMemo(() => {
-    const rows =
-      filterProfile === "all"
-        ? profiles
-        : profiles.filter((profile) => profile.id === filterProfile);
-
-    return [...rows].sort((a, b) => {
-      const left = a[sortField] === "-" ? "" : a[sortField];
-      const right = b[sortField] === "-" ? "" : b[sortField];
-
-      return sortDirection === "asc"
-        ? left.localeCompare(right)
-        : right.localeCompare(left);
-    });
-  }, [profiles, filterProfile, sortField, sortDirection]);
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection((direction) => (direction === "asc" ? "desc" : "asc"));
-      return;
-    }
-
-    setSortField(field);
-    setSortDirection("desc");
-  };
-
-  const handleCreateProfile = () => {
-    if (!newProfileName.trim()) {
-      return;
-    }
+  const createProfile = () => {
+    const name = newProfileName.trim();
+    if (!name) return;
 
     const now = getNow();
-    const id = `${newProfileName.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`;
+    const id = `${name.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`;
 
     const profile: Profile = {
       id,
-      name: newProfileName.trim(),
-      description: newProfileDescription.trim() || "Custom low vision profile.",
+      name,
+      description: "",
       shortcutKey: String(profiles.length + 1),
       createdAt: now,
       modifiedAt: now,
@@ -85,14 +59,11 @@ function ProfilesPage({
     setSelectedProfileId(id);
     setActiveProfileId(id);
     setNewProfileName("");
-    setNewProfileDescription("");
-    setIsCreateOpen(false);
+    setIsCreating(false);
   };
 
-  const handleSaveProfile = () => {
-    if (!selectedProfile) {
-      return;
-    }
+  const saveProfile = () => {
+    if (!selectedProfile) return;
 
     setProfiles((current) =>
       current.map((profile) =>
@@ -103,206 +74,202 @@ function ProfilesPage({
     );
   };
 
-  const handleDeleteProfile = () => {
-    if (!selectedProfile) {
+  const deleteProfile = () => {
+    if (!selectedProfile) return;
+
+    const rest = profiles.filter((profile) => profile.id !== selectedProfile.id);
+    const next = rest[0];
+
+    setProfiles(rest);
+    setSelectedProfileId(next?.id ?? "");
+    setActiveProfileId((current) =>
+      current === selectedProfile.id ? next?.id ?? "" : current
+    );
+  };
+
+  const toggleActiveProfile = () => {
+    if (!selectedProfile) return;
+
+    if (activeProfileId === selectedProfile.id) {
+      setActiveProfileId("");
       return;
     }
 
-    const remainingProfiles = profiles.filter(
-      (profile) => profile.id !== selectedProfile.id
-    );
-
-    setProfiles(remainingProfiles);
-
-    const nextProfile = remainingProfiles[0];
-
-    setSelectedProfileId(nextProfile?.id ?? "");
-    setActiveProfileId((current) =>
-      current === selectedProfile.id ? nextProfile?.id ?? "" : current
-    );
-
-    setFilterProfile("all");
-    setMessage("");
+    setActiveProfileId(selectedProfile.id);
   };
 
-  const handleShortcutChange = (profileId: string, value: string) => {
+  const startEditProfileName = (profile: Profile) => {
+    setEditingProfileId(profile.id);
+    setEditingName(profile.name);
+  };
+
+  const finishEditProfileName = () => {
+    const name = editingName.trim();
+
+    if (!editingProfileId || !name) {
+      setEditingProfileId(null);
+      setEditingName("");
+      return;
+    }
+
     setProfiles((current) =>
       current.map((profile) =>
-        profile.id === profileId
-          ? { ...profile, shortcutKey: value.slice(-3) }
+        profile.id === editingProfileId
+          ? { ...profile, name, modifiedAt: getNow() }
           : profile
       )
     );
+
+    setEditingProfileId(null);
+    setEditingName("");
+  };
+
+  const exportProfiles = () => {
+    const blob = new Blob([JSON.stringify(profiles, null, 2)], {
+      type: "application/json",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "visionup-profiles.json";
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+  const importProfiles = (file: File) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(String(reader.result)) as Profile[];
+        if (!Array.isArray(imported)) return;
+
+        setProfiles(imported);
+        setSelectedProfileId(imported[0]?.id ?? "");
+        setActiveProfileId(imported[0]?.id ?? "");
+      } catch {
+        console.error("Invalid profiles JSON");
+      }
+    };
+
+    reader.readAsText(file);
   };
 
   return (
     <>
-      <div className="profiles-header">
-        <div>
-          <h3>Profiles</h3>
-          <p>
-            First create or select a profile, customize settings, then save it.
-          </p>
-        </div>
+      <div className="profile-tabs">
+        <button className="profile-add-tab" onClick={() => setIsCreating(true)}>
+          +
+        </button>
 
-        <div className="profiles-header-actions">
-          <button className="secondary-button" onClick={() => setIsCreateOpen(true)}>
-            Create New Profile
-          </button>
+        {isCreating && (
+          <input
+            className="profile-tab-input"
+            autoFocus
+            value={newProfileName}
+            onChange={(event) => setNewProfileName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") createProfile();
+              if (event.key === "Escape") setIsCreating(false);
+            }}
+            placeholder="Profile name"
+          />
+        )}
 
-          <button className="secondary-button" onClick={handleSaveProfile}>
-            Save Profile
-          </button>
+        {profiles.map((profile) => {
+          const isSelected = selectedProfileId === profile.id;
+          const isActive = activeProfileId === profile.id;
+          const isEditing = editingProfileId === profile.id;
 
-          <button className="danger-button" onClick={handleDeleteProfile}>
-            Delete Profile
-          </button>
-        </div>
+          return isEditing ? (
+            <input
+              key={profile.id}
+              className="profile-tab-input"
+              autoFocus
+              value={editingName}
+              onChange={(event) => setEditingName(event.target.value)}
+              onBlur={finishEditProfileName}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") finishEditProfileName();
+                if (event.key === "Escape") {
+                  setEditingProfileId(null);
+                  setEditingName("");
+                }
+              }}
+            />
+          ) : (
+            <button
+              key={profile.id}
+              className={`profile-tab ${isSelected ? "selected" : ""}`}
+              onClick={() => setSelectedProfileId(profile.id)}
+              onDoubleClick={() => startEditProfileName(profile)}
+            >
+              {profile.name}
+              {isActive && <span>Active</span>}
+            </button>
+          );
+        })}
       </div>
-
-      {message && <div className="profile-message">{message}</div>}
 
       {profiles.length === 0 ? (
         <div className="empty-profiles">
           <h3>No profiles yet</h3>
-          <p>Create your first profile to unlock VisionUp settings.</p>
-          <button className="secondary-button" onClick={() => setIsCreateOpen(true)}>
-            Create First Profile
-          </button>
+          <p>Press + and type a profile name to create your first VisionUp profile.</p>
         </div>
       ) : (
-        <div className="profiles-grid">
-          {profiles.map((profile) => {
-            const isSelected = selectedProfileId === profile.id;
-            const isActive = activeProfileId === profile.id;
+        <>
+          <div className="profile-action-bar">
+            <div className="active-section-chip">
+              {activeSection}
+            </div>
 
-            return (
-              <article
-                key={profile.id}
-                className={`profile-card-large ${isSelected ? "selected" : ""}`}
-                onClick={() => setSelectedProfileId(profile.id)}
+            <div className="profiles-header-actions">
+              <button
+                className={`secondary-button ${isSelectedProfileActive ? "active-action" : ""}`}
+                onClick={toggleActiveProfile}
               >
-                <div className="profile-card-header">
-                  <div>
-                    <button
-                      className="profile-name-button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSelectedProfileId(profile.id);
-                      }}
-                    >
-                      {profile.name}
-                    </button>
+                {isSelectedProfileActive ? "Active" : "Inactive"}
+              </button>
 
-                    <p>{profile.description}</p>
-                  </div>
+              <button className="secondary-button" onClick={saveProfile}>
+                Save
+              </button>
 
-                  <button
-                    className={`profile-status-button ${isActive ? "active" : ""}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setActiveProfileId(profile.id);
-                    }}
-                  >
-                    {isActive ? "Active" : "Inactive"}
-                  </button>
-                </div>
+              <button className="danger-button" onClick={deleteProfile}>
+                Delete
+              </button>
 
-                <div
-                  className="profile-shortcut-row"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <span>Profile Shortcut</span>
+              <button className="secondary-button" onClick={() => fileInputRef.current?.click()}>
+                Import
+              </button>
 
-                  <div className="shortcut-edit">
-                    <strong>⌘ +</strong>
-                    <input
-                      className="shortcut-input"
-                      value={profile.shortcutKey}
-                      onChange={(event) =>
-                        handleShortcutChange(profile.id, event.target.value)
-                      }
-                    />
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+              <button className="secondary-button" onClick={exportProfiles}>
+                Export
+              </button>
 
-      <div className="profile-history-section">
-        <div className="history-title-row">
-          <h3>History</h3>
-
-          <select
-            className="profile-filter-select"
-            value={filterProfile}
-            onChange={(event) => setFilterProfile(event.target.value)}
-          >
-            <option value="all">All Profiles</option>
-
-            {profiles.map((profile) => (
-              <option key={profile.id} value={profile.id}>
-                {profile.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="history-table">
-          <div className="history-table-header">
-            <span>Profile</span>
-            <button onClick={() => handleSort("createdAt")}>Created At</button>
-            <button onClick={() => handleSort("modifiedAt")}>Modified At</button>
-            <button onClick={() => handleSort("deletedAt")}>Deleted At</button>
-          </div>
-
-          {historyRows.map((profile) => (
-            <div className="history-table-row" key={profile.id}>
-              <span>{profile.name}</span>
-              <span>{profile.createdAt}</span>
-              <span>{profile.modifiedAt}</span>
-              <span>{profile.deletedAt}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {isCreateOpen && (
-        <div className="modal-backdrop">
-          <div className="profile-modal">
-            <h3>Create New Profile</h3>
-
-            <label>
-              Profile Name
               <input
-                value={newProfileName}
-                onChange={(event) => setNewProfileName(event.target.value)}
-                placeholder="Example: Coding Profile"
+                ref={fileInputRef}
+                hidden
+                type="file"
+                accept="application/json"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) importProfiles(file);
+                }}
               />
-            </label>
-
-            <label>
-              Description
-              <textarea
-                value={newProfileDescription}
-                onChange={(event) => setNewProfileDescription(event.target.value)}
-                placeholder="Describe what this profile is for"
-              />
-            </label>
-
-            <div className="profile-actions">
-              <button className="secondary-button" onClick={handleCreateProfile}>
-                Create
-              </button>
-
-              <button className="mini-button" onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </button>
             </div>
           </div>
-        </div>
+
+          <div className="profile-model-content">
+            {activeSection === "zoom" && <ZoomPage />}
+            {activeSection === "shortcuts" && <ShortcutsPage />}
+            {activeSection === "reading" && <ReadingPage />}
+            {activeSection === "settings" && <SettingsPage />}
+          </div>
+        </>
       )}
     </>
   );

@@ -2,19 +2,12 @@ import { useEffect, useState } from "react";
 import "./App.css";
 
 import Sidebar from "./components/Sidebar";
-import Topbar from "./components/Topbar";
 import QuickTools from "./components/QuickTools";
-
-import ZoomPage from "./pages/ZoomPage";
 import ProfilesPage from "./pages/ProfilesPage";
-import ShortcutsPage from "./pages/ShortcutsPage";
-import ReadingPage from "./pages/ReadingPage";
-import SettingsPage from "./pages/SettingsPage";
 
 import { MenuItem, Profile, Section } from "./types/app";
 
 const menuItems: MenuItem[] = [
-  { id: "profiles", label: "Profiles", description: "Low vision work modes" },
   { id: "zoom", label: "Zoom", description: "Fast and smooth magnification" },
   { id: "shortcuts", label: "Shortcuts", description: "Fast keyboard actions" },
   { id: "reading", label: "Reading", description: "Comfortable text reading" },
@@ -25,7 +18,7 @@ const initialProfiles: Profile[] = [
   {
     id: "reading",
     name: "Reading Profile",
-    description: "Large text, comfortable reading mode, reduced eye strain.",
+    description: "",
     shortcutKey: "1",
     createdAt: "2026-06-09 09:00",
     modifiedAt: "2026-06-09 09:20",
@@ -34,31 +27,20 @@ const initialProfiles: Profile[] = [
   {
     id: "coding",
     name: "Coding Profile",
-    description: "Balanced zoom, high contrast, focused workspace.",
+    description: "",
     shortcutKey: "2",
     createdAt: "2026-06-09 09:10",
     modifiedAt: "2026-06-09 10:05",
     deletedAt: "-",
   },
-  {
-    id: "browsing",
-    name: "Browsing Profile",
-    description: "Smooth zoom and comfortable web browsing settings.",
-    shortcutKey: "3",
-    createdAt: "2026-06-09 09:30",
-    modifiedAt: "2026-06-09 09:45",
-    deletedAt: "-",
-  },
 ];
 
 function App() {
-  const [activeSection, setActiveSection] = useState<Section>("profiles");
+  const [activeSection, setActiveSection] = useState<Section>("zoom");
   const [uiScale, setUiScale] = useState(1);
   const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("coding");
   const [activeProfileId, setActiveProfileId] = useState<string>("coding");
-
-  const hasProfiles = profiles.length > 0;
 
   const increaseUiScale = () => {
     setUiScale((scale) => Math.min(1.6, Number((scale + 0.1).toFixed(1))));
@@ -73,11 +55,7 @@ function App() {
   };
 
   const handleSectionChange = (section: Section) => {
-    if (!hasProfiles && section !== "profiles") {
-      setActiveSection("profiles");
-      return;
-    }
-
+    if (profiles.length === 0) return;
     setActiveSection(section);
   };
 
@@ -107,38 +85,28 @@ function App() {
     return () => window.removeEventListener("keydown", handleShortcut);
   }, []);
 
-  const activeItem = menuItems.find((item) => item.id === activeSection);
-
   return (
     <main className="app-shell" style={{ fontSize: `${uiScale * 1.08}rem` }}>
       <Sidebar
         uiScale={uiScale}
         activeSection={activeSection}
         menuItems={menuItems}
-        hasProfiles={hasProfiles}
+        hasProfiles={profiles.length > 0}
         onSectionChange={handleSectionChange}
       />
 
       <section className="content">
-        <Topbar title={activeItem?.label ?? "VisionUp"} />
-
         <section className="dashboard-grid">
           <div className="main-panel">
-            {activeSection === "profiles" && (
-              <ProfilesPage
-                profiles={profiles}
-                setProfiles={setProfiles}
-                selectedProfileId={selectedProfileId}
-                setSelectedProfileId={setSelectedProfileId}
-                activeProfileId={activeProfileId}
-                setActiveProfileId={setActiveProfileId}
-              />
-            )}
-
-            {activeSection === "zoom" && <ZoomPage />}
-            {activeSection === "shortcuts" && <ShortcutsPage />}
-            {activeSection === "reading" && <ReadingPage />}
-            {activeSection === "settings" && <SettingsPage />}
+            <ProfilesPage
+              activeSection={activeSection}
+              profiles={profiles}
+              setProfiles={setProfiles}
+              selectedProfileId={selectedProfileId}
+              setSelectedProfileId={setSelectedProfileId}
+              activeProfileId={activeProfileId}
+              setActiveProfileId={setActiveProfileId}
+            />
           </div>
 
           <QuickTools

@@ -148,16 +148,20 @@ function ShortcutsPage() {
                       {shortcut.defaultShortcut}
                     </div>
 
-                    <div className="custom-shortcut">
-                      <span>{shortcut.fixedKeys}</span>
-                      <input
-                        value={shortcut.customKey}
-                        onChange={(event) =>
-                          updateShortcut(shortcut.id, event.target.value)
-                        }
-                        aria-label={`${shortcut.action} custom key`}
-                      />
-                    </div>
+                    {shortcut.group === "Zoom" && shortcut.id !== "zoom-interval" ? (
+  <div className="readonly-shortcut">Fixed</div>
+) : (
+  <div className="custom-shortcut">
+    <span>{shortcut.fixedKeys}</span>
+    <input
+      value={shortcut.customKey}
+      onChange={(event) =>
+        updateShortcut(shortcut.id, event.target.value)
+      }
+      aria-label={`${shortcut.action} custom key`}
+    />
+  </div>
+)}
                   </div>
                 ))}
             </div>

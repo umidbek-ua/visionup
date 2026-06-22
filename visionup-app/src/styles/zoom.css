@@ -1,145 +1,107 @@
-.control-card {
-  margin-top: 22px;
-  padding: 26px;
-  border-radius: 26px;
+.zoom-type-section,
+.zoom-mode-panel {
+  margin-bottom: 24px;
+  padding: 28px;
+  border-radius: 28px;
   background: rgba(2, 6, 23, 0.82);
   border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
-.control-card label {
-  display: block;
-  margin-bottom: 14px;
-  font-size: 1.18em;
-  font-weight: 750;
+.zoom-type-section h3,
+.zoom-mode-panel h3 {
+  margin: 0 0 16px;
+  font-size: 2em;
+  font-weight: 850;
 }
 
-.setting-title-row {
+.zoom-mode-panel p,
+.zoom-shortcut-text {
+  margin: 0 0 20px;
+  color: #dbeafe;
+  font-size: 1.15em;
+  line-height: 1.55;
+}
+
+.zoom-shortcut-text {
+  margin-top: 18px;
+}
+
+.zoom-shortcut-text strong {
+  color: #67e8f9;
+}
+
+.zoom-type-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 14px;
+}
+
+.option-button {
+  min-height: 64px;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  font-size: 1.05em;
+  font-weight: 850;
+}
+
+.option-button.active {
+  color: #67e8f9;
+  background: rgba(56, 189, 248, 0.16);
+  border-color: #38bdf8;
+}
+
+.zoom-shortcut-note {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.24);
 }
 
-.value-pill {
-  white-space: nowrap;
-  border-radius: 999px;
-  padding: 8px 16px;
-  color: #67e8f9;
-  background: rgba(56, 189, 248, 0.13);
-  border: 1px solid rgba(56, 189, 248, 0.32);
-  font-size: 1.18em;
-  font-weight: 800;
-}
-
-.range-row {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  margin-bottom: 24px;
-}
-
-.range-row input {
-  width: 100%;
-  accent-color: #38bdf8;
-}
-
-.zoom-mode-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-  gap: 18px;
-  margin-bottom: 22px;
-}
-
-.mode-card {
-  min-height: 132px;
-  padding: 24px;
-  border-radius: 26px;
-  text-align: left;
+.zoom-shortcut-note span {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px solid rgba(255, 255, 255, 0.14);
-  cursor: pointer;
+  font-size: 1.08em;
+  font-weight: 850;
 }
 
-.mode-card span {
-  display: block;
-  margin-bottom: 10px;
-  font-size: 1.28em;
-  font-weight: 750;
+.zoom-shortcut-note strong {
+  color: #67e8f9;
+  font-size: 1.1em;
+  font-weight: 900;
 }
 
-.mode-card small {
-  color: #dbeafe;
-  font-size: 1.02em;
-  line-height: 1.45;
-}
-
-.mode-card.active {
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.18);
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.22);
-}
-
-.shortcut-list {
+.fast-zoom-grid {
   display: grid;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.shortcut-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  align-items: center;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
-  padding: 16px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.07);
 }
 
-.shortcut-row span {
-  font-size: 1.04em;
-  font-weight: 700;
+.fast-zoom-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.24);
 }
 
-.shortcut-row strong {
+.fast-zoom-card span {
+  display: block;
+  margin-bottom: 8px;
   color: #67e8f9;
-  font-size: 1em;
-  font-weight: 800;
+  font-size: 1.45em;
+  font-weight: 900;
 }
 
-.mini-button {
-  min-height: 42px;
-  border: 0;
-  border-radius: 12px;
-  padding: 9px 12px;
+.fast-zoom-card strong {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.13);
-  font-size: 0.95em;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.interval-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(58px, 1fr));
-  gap: 12px;
-  margin: 16px 0 24px;
-}
-
-.interval-button {
-  min-height: 66px;
-  border-radius: 18px;
-  border: 2px solid rgba(255, 255, 255, 0.14);
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
-  font-size: 1.32em;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.interval-button.active {
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.2);
+  font-size: 1.05em;
+  font-weight: 850;
 }
 
 .settings-section {
@@ -160,7 +122,6 @@
   min-height: 142px;
   padding: 20px;
   border-radius: 22px;
-  position: relative;
   background: rgba(2, 6, 23, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.13);
 }
@@ -169,14 +130,14 @@
   display: block;
   margin-bottom: 10px;
   color: #ffffff;
-  font-size: 1.08em;
-  font-weight: 760;
+  font-size: 1.12em;
+  font-weight: 820;
 }
 
 .setting-card p {
   margin: 0;
   color: #dbeafe;
-  font-size: 1em;
+  font-size: 1.05em;
   line-height: 1.5;
 }
 
@@ -189,6 +150,6 @@
   background: rgba(250, 204, 21, 0.1);
   border: 1px solid rgba(250, 204, 21, 0.25);
   font-style: normal;
-  font-size: 0.85em;
-  font-weight: 800;
+  font-size: 0.9em;
+  font-weight: 850;
 }

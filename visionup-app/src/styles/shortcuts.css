@@ -102,4 +102,34 @@
   .custom-shortcut {
     grid-template-columns: 1fr;
   }
+
+  .shortcut-edit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.24);
+}
+
+.shortcut-edit strong {
+  color: #67e8f9;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.shortcut-input {
+  min-height: 34px;
+  width: 72px;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: 10px;
+  padding: 6px 10px;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.92);
+  font-weight: 800;
+  text-align: center;
+}
+
 }

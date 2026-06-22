@@ -1,136 +1,75 @@
 import { useState } from "react";
-import { ZoomMode } from "../types/app";
+
+type ZoomType = "Full Screen" | "Picture-in-Picture" | "Zoom Window";
 
 function ZoomPage() {
-  const [zoomMode, setZoomMode] = useState<ZoomMode>("fast");
-  const [maxZoom, setMaxZoom] = useState(300);
-  const [smoothInterval, setSmoothInterval] = useState(3);
+  const [zoomType, setZoomType] = useState<ZoomType>("Full Screen");
 
   return (
     <>
-      <div className="zoom-mode-switch">
-        <button
-          className={`mode-card ${zoomMode === "fast" ? "active" : ""}`}
-          onClick={() => setZoomMode("fast")}
-        >
-          <span>Fast Zoom</span>
-          <small>Jump quickly to a predefined zoom level.</small>
-        </button>
+      <section className="zoom-type-section">
+        <h3>Zoom Type</h3>
 
-        <button
-          className={`mode-card ${zoomMode === "smooth" ? "active" : ""}`}
-          onClick={() => setZoomMode("smooth")}
-        >
-          <span>Smooth Zoom</span>
-          <small>Zoom step by step with comfortable intervals.</small>
-        </button>
-      </div>
+        <div className="zoom-type-options">
+          {(["Full Screen", "Picture-in-Picture", "Zoom Window"] as ZoomType[]).map(
+            (type) => (
+              <button
+                key={type}
+                className={`option-button ${zoomType === type ? "active" : ""}`}
+                onClick={() => setZoomType(type)}
+              >
+                {type}
+              </button>
+            )
+          )}
+        </div>
 
-      <div className="control-card">
-        {zoomMode === "fast" && (
-          <>
-            <div className="setting-title-row">
-              <h3>Fast Zoom Settings</h3>
-              <span className="value-pill">{maxZoom}%</span>
-            </div>
+        <p className="zoom-shortcut-text">
+          Shortcut: <strong>⌘ + Option + Z</strong>
+        </p>
+      </section>
 
-            <p>
-              Fast Zoom jumps to the selected maximum zoom level and never goes
-              above this value.
-            </p>
+      <section className="zoom-mode-panel">
+        <h3>Fast Zoom</h3>
+        <p>Use fixed shortcut levels for fast and predictable zoom control.</p>
 
-            <label>Max Zoom Level</label>
+        <div className="zoom-shortcut-note">
+          <span>Shortcut</span>
+          <strong>⌘ + Shift + 0-9</strong>
+        </div>
 
-            <div className="range-row">
-              <input
-                type="range"
-                min="150"
-                max="500"
-                step="25"
-                value={maxZoom}
-                onChange={(event) => setMaxZoom(Number(event.target.value))}
-              />
-            </div>
+        <div className="fast-zoom-grid">
+          {Array.from({ length: 10 }).map((_, index) => {
+            const key = index === 9 ? "0" : String(index + 1);
+            const value = index === 9 ? "100%" : `${(index + 1) * 10}%`;
 
-            <div className="shortcut-list">
-              <div className="shortcut-row">
-                <span>Fast Zoom In</span>
-                <strong>⌘ + Shift + +</strong>
-                <button className="mini-button">Customize</button>
+            return (
+              <div className="fast-zoom-card" key={key}>
+                <span>{value}</span>
+                <strong>⌘ + Shift + {key}</strong>
               </div>
+            );
+          })}
+        </div>
+      </section>
 
-              <div className="shortcut-row">
-                <span>Fast Zoom Out</span>
-                <strong>⌘ + Shift + -</strong>
-                <button className="mini-button">Customize</button>
-              </div>
-            </div>
-          </>
-        )}
+      <section className="zoom-mode-panel">
+        <h3>Smooth Zoom</h3>
+        <p>Use mouse scroll for gradual zoom control.</p>
 
-        {zoomMode === "smooth" && (
-          <>
-            <div className="setting-title-row">
-              <h3>Smooth Zoom Settings</h3>
-              <span className="value-pill">Interval {smoothInterval}</span>
-            </div>
-
-            <p>
-              Smooth Zoom changes magnification gradually using the selected
-              zoom interval.
-            </p>
-
-            <label>Zoom Interval</label>
-
-            <div className="interval-grid">
-              {[1, 2, 3, 4, 5].map((value) => (
-                <button
-                  key={value}
-                  className={`interval-button ${
-                    smoothInterval === value ? "active" : ""
-                  }`}
-                  onClick={() => setSmoothInterval(value)}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
-
-            <div className="shortcut-list">
-              <div className="shortcut-row">
-                <span>Smooth Zoom In</span>
-                <strong>⌘ + +</strong>
-                <button className="mini-button">Customize</button>
-              </div>
-
-              <div className="shortcut-row">
-                <span>Smooth Zoom Out</span>
-                <strong>⌘ + -</strong>
-                <button className="mini-button">Customize</button>
-              </div>
-
-              <div className="shortcut-row">
-                <span>Change Zoom Interval</span>
-                <strong>⌘ + Option + I</strong>
-                <button className="mini-button">Customize</button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+        <div className="zoom-shortcut-note">
+          <span>Shortcut</span>
+          <strong>⌘ + Mouse Scroll</strong>
+        </div>
+      </section>
 
       <div className="settings-section">
         <h3>General Zoom Settings</h3>
 
         <div className="settings-grid">
           <div className="setting-card">
-            <span>Custom Zoom Levels</span>
-            <p>Save preferred zoom levels for daily use.</p>
-          </div>
-
-          <div className="setting-card">
             <span>Zoom Profiles</span>
-            <p>Use different zoom behavior for reading, coding, and browsing.</p>
+            <p>Zoom behavior is saved into the active profile.</p>
           </div>
 
           <div className="setting-card">

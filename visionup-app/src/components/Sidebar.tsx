@@ -34,7 +34,7 @@ function Sidebar({
 
       <nav className="menu">
         {menuItems.map((item) => {
-          const isLocked = !hasProfiles && item.id !== "profiles";
+          const isLocked = !hasProfiles;
 
           return (
             <button

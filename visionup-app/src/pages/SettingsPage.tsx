@@ -58,57 +58,6 @@ function SettingsPage() {
         </section>
 
         <section className="settings-panel">
-          <h3>Zoom Behavior</h3>
-
-          <div className="settings-row vertical">
-            <strong>Zoom Type</strong>
-
-            <div className="option-grid">
-              {(["Full Screen", "Picture-in-Picture", "Zoom Window"] as ZoomType[]).map(
-                (item) => (
-                  <button
-                    key={item}
-                    className={`option-button ${zoomType === item ? "active" : ""}`}
-                    onClick={() => setZoomType(item)}
-                  >
-                    {item}
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-
-          <div className="settings-row vertical">
-            <strong>Default Zoom Mode</strong>
-
-            <div className="option-grid two">
-              {(["Fast", "Smooth"] as DefaultZoomMode[]).map((item) => (
-                <button
-                  key={item}
-                  className={`option-button ${defaultZoomMode === item ? "active" : ""}`}
-                  onClick={() => setDefaultZoomMode(item)}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="settings-panel">
-          <h3>Profiles Backup</h3>
-
-          <div className="backup-actions">
-            <button className="secondary-button">Export Profiles JSON</button>
-            <button className="secondary-button">Import Profiles JSON</button>
-          </div>
-
-          <p className="settings-note">
-            MVP note: export/import will be connected to local storage later.
-          </p>
-        </section>
-
-        <section className="settings-panel">
           <h3>App Preferences</h3>
 
           <div className="settings-row vertical">
