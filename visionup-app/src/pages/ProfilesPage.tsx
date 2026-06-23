@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { getProfiles, type DbProfile } from "../services/profileService";
 import { Profile, Section } from "../types/app";
 
 import ZoomPage from "./ZoomPage";
@@ -20,6 +21,18 @@ function getNow() {
   return new Date().toISOString().slice(0, 16).replace("T", " ");
 }
 
+function mapDbProfile(profile: DbProfile, index: number): Profile {
+  return {
+    id: profile.id,
+    name: profile.name,
+    description: "",
+    shortcutKey: String(index + 1),
+    createdAt: profile.created_at,
+    modifiedAt: profile.updated_at,
+    deletedAt: profile.deleted_at ?? "",
+  };
+}
+
 function ProfilesPage({
   activeSection,
   profiles,
@@ -37,6 +50,31 @@ function ProfilesPage({
 
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId);
   const isSelectedProfileActive = selectedProfileId === activeProfileId;
+
+  useEffect(() => {
+    async function loadProfilesFromDb() {
+      try {
+        const dbProfiles = await getProfiles();
+        const mappedProfiles = dbProfiles.map(mapDbProfile);
+
+        setProfiles(mappedProfiles);
+
+        const activeProfile = dbProfiles.find((profile) => profile.is_active);
+        const firstProfile = dbProfiles[0];
+
+        if (activeProfile) {
+          setSelectedProfileId(activeProfile.id);
+          setActiveProfileId(activeProfile.id);
+        } else if (firstProfile) {
+          setSelectedProfileId(firstProfile.id);
+        }
+      } catch (error) {
+        console.error("Failed to load profiles from DB:", error);
+      }
+    }
+
+    loadProfilesFromDb();
+  }, []);
 
   const createProfile = () => {
     const name = newProfileName.trim();
