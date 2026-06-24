@@ -61,29 +61,42 @@ function App() {
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
-      const isMacShortcut = event.metaKey && !event.ctrlKey;
+      const isUiScaleShortcut = event.metaKey && !event.ctrlKey;
+      const isProfileSwitchShortcut = event.metaKey && event.ctrlKey;
 
-      if (!isMacShortcut) return;
+      if (isUiScaleShortcut) {
+        if (event.key === "+" || event.key === "=") {
+          event.preventDefault();
+          increaseUiScale();
+        }
 
-      if (event.key === "+" || event.key === "=") {
-        event.preventDefault();
-        increaseUiScale();
+        if (event.key === "-") {
+          event.preventDefault();
+          decreaseUiScale();
+        }
+
+        if (event.key === "0") {
+          event.preventDefault();
+          resetUiScale();
+        }
       }
 
-      if (event.key === "-") {
-        event.preventDefault();
-        decreaseUiScale();
-      }
+      if (isProfileSwitchShortcut && /^[1-9]$/.test(event.key)) {
+        const targetProfile = profiles.find(
+          (profile) => profile.shortcutKey === event.key
+        );
 
-      if (event.key === "0") {
+        if (!targetProfile) return;
+
         event.preventDefault();
-        resetUiScale();
+        setSelectedProfileId(targetProfile.id);
+        setActiveProfileId(targetProfile.id);
       }
     };
 
     window.addEventListener("keydown", handleShortcut);
     return () => window.removeEventListener("keydown", handleShortcut);
-  }, []);
+  }, [profiles]);
 
   return (
     <main className="app-shell" style={{ fontSize: `${uiScale * 1.08}rem` }}>

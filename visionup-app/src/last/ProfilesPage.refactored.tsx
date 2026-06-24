@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { createProfile as createDbProfile, getProfiles, type DbProfile } from "../services/profileService";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  createProfile as createDbProfile,
+  getProfiles,
+  type DbProfile,
+} from "../services/profileService";
 import { Profile, Section } from "../types/app";
 
 import ZoomPage from "./ZoomPage";
@@ -19,6 +23,30 @@ interface ProfilesPageProps {
 
 function getNow() {
   return new Date().toISOString().slice(0, 16).replace("T", " ");
+}
+
+function getProfileOrder(profile: Profile) {
+  const order = Number(profile.shortcutKey);
+  return Number.isFinite(order) && order > 0 ? order : 999;
+}
+
+function normalizeProfileOrder(profiles: Profile[]) {
+  return [...profiles]
+    .sort((a, b) => getProfileOrder(a) - getProfileOrder(b))
+    .map((profile, index) => ({
+      ...profile,
+      shortcutKey: String(index + 1),
+    }));
+}
+
+function getProfileShortcut(profile: Profile) {
+  const order = getProfileOrder(profile);
+
+  if (order >= 1 && order <= 9) {
+    return `Ctrl + Cmd + ${order}`;
+  }
+
+  return "No shortcut";
 }
 
 function mapDbProfile(profile: DbProfile, index: number): Profile {
@@ -48,25 +76,34 @@ function ProfilesPage({
   const [editingName, setEditingName] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  const orderedProfiles = useMemo(() => normalizeProfileOrder(profiles), [profiles]);
+  const selectedProfileIndex = orderedProfiles.findIndex(
+    (profile) => profile.id === selectedProfileId
+  );
+  
   const selectedProfile = profiles.find((profile) => profile.id === selectedProfileId);
-  const isSelectedProfileActive = selectedProfileId === activeProfileId;
+  const isSelectedProfileCurrent = selectedProfileId === activeProfileId;
 
   useEffect(() => {
     async function loadProfilesFromDb() {
       try {
         const dbProfiles = await getProfiles();
-        const mappedProfiles = dbProfiles.map(mapDbProfile);
+        const mappedProfiles = normalizeProfileOrder(dbProfiles.map(mapDbProfile));
 
         setProfiles(mappedProfiles);
 
         const activeProfile = dbProfiles.find((profile) => profile.is_active);
-        const firstProfile = dbProfiles[0];
+        const firstProfile = mappedProfiles[0];
 
         if (activeProfile) {
           setSelectedProfileId(activeProfile.id);
           setActiveProfileId(activeProfile.id);
         } else if (firstProfile) {
           setSelectedProfileId(firstProfile.id);
+          setActiveProfileId(firstProfile.id);
+        } else {
+          setSelectedProfileId("");
+          setActiveProfileId("");
         }
       } catch (error) {
         console.error("Failed to load profiles from DB:", error);
@@ -74,7 +111,7 @@ function ProfilesPage({
     }
 
     loadProfilesFromDb();
-  }, []);
+  }, [setProfiles, setSelectedProfileId, setActiveProfileId]);
 
   const createProfile = async () => {
     const name = newProfileName.trim();
@@ -84,7 +121,15 @@ function ProfilesPage({
       const dbProfile = await createDbProfile(name);
       const profile = mapDbProfile(dbProfile, profiles.length);
 
-      setProfiles((current) => [...current, profile]);
+      setProfiles((current) =>
+        normalizeProfileOrder([
+          ...current,
+          {
+            ...profile,
+            shortcutKey: String(current.length + 1),
+          },
+        ])
+      );
       setSelectedProfileId(profile.id);
       setActiveProfileId(profile.id);
       setNewProfileName("");
@@ -109,7 +154,9 @@ function ProfilesPage({
   const deleteProfile = () => {
     if (!selectedProfile) return;
 
-    const rest = profiles.filter((profile) => profile.id !== selectedProfile.id);
+    const rest = normalizeProfileOrder(
+      profiles.filter((profile) => profile.id !== selectedProfile.id)
+    );
     const next = rest[0];
 
     setProfiles(rest);
@@ -119,15 +166,40 @@ function ProfilesPage({
     );
   };
 
-  const toggleActiveProfile = () => {
+  const setCurrentProfile = () => {
+    if (!selectedProfile) return;
+    setActiveProfileId(selectedProfile.id);
+  };
+
+  const moveSelectedProfile = (direction: "up" | "down") => {
     if (!selectedProfile) return;
 
-    if (activeProfileId === selectedProfile.id) {
-      setActiveProfileId("");
-      return;
-    }
+    setProfiles((current) => {
+      const ordered = normalizeProfileOrder(current);
+      const currentIndex = ordered.findIndex(
+        (profile) => profile.id === selectedProfile.id
+      );
 
-    setActiveProfileId(selectedProfile.id);
+      if (currentIndex === -1) return current;
+
+      const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+      if (targetIndex < 0 || targetIndex >= ordered.length) {
+        return current;
+      }
+
+      const nextOrdered = [...ordered];
+      const movingProfile = nextOrdered[currentIndex];
+
+      nextOrdered[currentIndex] = nextOrdered[targetIndex];
+      nextOrdered[targetIndex] = movingProfile;
+
+      return nextOrdered.map((profile, index) => ({
+        ...profile,
+        shortcutKey: String(index + 1),
+        modifiedAt: getNow(),
+      }));
+    });
   };
 
   const startEditProfileName = (profile: Profile) => {
@@ -157,9 +229,22 @@ function ProfilesPage({
   };
 
   const exportProfiles = () => {
-    const blob = new Blob([JSON.stringify(profiles, null, 2)], {
-      type: "application/json",
-    });
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            currentProfileId: activeProfileId,
+            selectedProfileId,
+            profiles: orderedProfiles,
+          },
+          null,
+          2
+        ),
+      ],
+      {
+        type: "application/json",
+      }
+    );
 
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -176,12 +261,22 @@ function ProfilesPage({
 
     reader.onload = () => {
       try {
-        const imported = JSON.parse(String(reader.result)) as Profile[];
-        if (!Array.isArray(imported)) return;
+        const imported = JSON.parse(String(reader.result));
+        const importedProfiles = Array.isArray(imported)
+          ? imported
+          : imported?.profiles;
 
-        setProfiles(imported);
-        setSelectedProfileId(imported[0]?.id ?? "");
-        setActiveProfileId(imported[0]?.id ?? "");
+        if (!Array.isArray(importedProfiles)) return;
+
+        const normalizedProfiles = normalizeProfileOrder(importedProfiles as Profile[]);
+        const importedCurrentProfileId =
+          typeof imported?.currentProfileId === "string"
+            ? imported.currentProfileId
+            : normalizedProfiles[0]?.id ?? "";
+
+        setProfiles(normalizedProfiles);
+        setSelectedProfileId(importedCurrentProfileId || normalizedProfiles[0]?.id || "");
+        setActiveProfileId(importedCurrentProfileId || normalizedProfiles[0]?.id || "");
       } catch {
         console.error("Invalid profiles JSON");
       }
@@ -209,12 +304,11 @@ function ProfilesPage({
             }}
             placeholder="Profile name"
           />
-
         )}
 
-        {profiles.map((profile) => {
+        {orderedProfiles.map((profile) => {
           const isSelected = selectedProfileId === profile.id;
-          const isActive = activeProfileId === profile.id;
+          const isCurrent = activeProfileId === profile.id;
           const isEditing = editingProfileId === profile.id;
 
           return isEditing ? (
@@ -240,8 +334,12 @@ function ProfilesPage({
               onClick={() => setSelectedProfileId(profile.id)}
               onDoubleClick={() => startEditProfileName(profile)}
             >
-              {profile.name}
-              {isActive && <span>Active</span>}
+              <span className="profile-order-badge">{profile.shortcutKey}</span>
+              <strong>{profile.name}</strong>
+              <span className="profile-shortcut-badge">
+                {getProfileShortcut(profile)}
+              </span>
+              {isCurrent && <span className="profile-current-badge">Current</span>}
             </button>
           );
         })}
@@ -255,16 +353,44 @@ function ProfilesPage({
       ) : (
         <>
           <div className="profile-action-bar">
-            <div className="active-section-chip">
-              {activeSection}
+            <div className="active-section-chip">{activeSection}</div>
+
+            <div className="selected-profile-info">
+              <span>Selected profile</span>
+              <strong>{selectedProfile?.name ?? "No profile selected"}</strong>
+              {selectedProfile && (
+                <em>{getProfileShortcut(selectedProfile)}</em>
+              )}
             </div>
 
             <div className="profiles-header-actions">
               <button
-                className={`secondary-button ${isSelectedProfileActive ? "active-action" : ""}`}
-                onClick={toggleActiveProfile}
+                className={`secondary-button ${
+                  isSelectedProfileCurrent ? "active-action" : ""
+                }`}
+                onClick={setCurrentProfile}
+                disabled={!selectedProfile || isSelectedProfileCurrent}
               >
-                {isSelectedProfileActive ? "Active" : "Inactive"}
+                {isSelectedProfileCurrent ? "Current" : "Set Current"}
+              </button>
+
+              <button
+                className="secondary-button"
+                onClick={() => moveSelectedProfile("up")}
+                disabled={selectedProfileIndex <= 0}
+              >
+                Move Up
+              </button>
+
+              <button
+                className="secondary-button"
+                onClick={() => moveSelectedProfile("down")}
+                disabled={
+                  selectedProfileIndex === -1 ||
+                  selectedProfileIndex >= orderedProfiles.length - 1
+                }
+              >
+                Move Down
               </button>
 
               <button className="secondary-button" onClick={saveProfile}>
@@ -275,7 +401,10 @@ function ProfilesPage({
                 Delete
               </button>
 
-              <button className="secondary-button" onClick={() => fileInputRef.current?.click()}>
+              <button
+                className="secondary-button"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 Import
               </button>
 
