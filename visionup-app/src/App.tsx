@@ -17,7 +17,7 @@ const menuItems: MenuItem[] = [
 const initialProfiles: Profile[] = [
   {
     id: "reading",
-    name: "Reading Profile",
+    name: "Reading",
     description: "",
     shortcutKey: "1",
     createdAt: "2026-06-09 09:00",
@@ -26,7 +26,7 @@ const initialProfiles: Profile[] = [
   },
   {
     id: "coding",
-    name: "Coding Profile",
+    name: "Coding",
     description: "",
     shortcutKey: "2",
     createdAt: "2026-06-09 09:10",
