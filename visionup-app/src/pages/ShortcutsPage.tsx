@@ -1,97 +1,16 @@
-import { useState } from "react";
+import { ShortcutItem } from "../types/app";
 
-interface ShortcutItem {
-  id: string;
-  group: "Zoom" | "Profiles" | "Settings";
-  action: string;
-  defaultShortcut: string;
-  fixedKeys: string;
-  customKey: string;
+interface ShortcutsPageProps {
+  shortcuts: ShortcutItem[];
+  onChange: (shortcuts: ShortcutItem[]) => void;
 }
-
-const initialShortcuts: ShortcutItem[] = [
-  {
-    id: "fast-zoom-levels",
-    group: "Zoom",
-    action: "Fast Zoom Levels",
-    defaultShortcut: "⌥ + Shift + 0-9",
-    fixedKeys: "Fixed",
-    customKey: "",
-  },
-  {
-    id: "smooth-zoom",
-    group: "Zoom",
-    action: "Smooth Zoom",
-    defaultShortcut: "⌘ + Mouse Scroll",
-    fixedKeys: "Fixed",
-    customKey: "",
-  },
-  {
-    id: "zoom-type",
-    group: "Zoom",
-    action: "Change Zoom Type",
-    defaultShortcut: "⌘ + Option + Z",
-    fixedKeys: "⌘ + Option +",
-    customKey: "Z",
-  },
-  {
-    id: "reading-profile",
-    group: "Profiles",
-    action: "Open Reading Profile",
-    defaultShortcut: "⌘ + 1",
-    fixedKeys: "⌘ +",
-    customKey: "1",
-  },
-  {
-    id: "coding-profile",
-    group: "Profiles",
-    action: "Open Coding Profile",
-    defaultShortcut: "⌘ + 2",
-    fixedKeys: "⌘ +",
-    customKey: "2",
-  },
-  {
-    id: "browsing-profile",
-    group: "Profiles",
-    action: "Open Browsing Profile",
-    defaultShortcut: "⌘ + 3",
-    fixedKeys: "⌘ +",
-    customKey: "3",
-  },
-  {
-    id: "increase-ui",
-    group: "Settings",
-    action: "Increase UI Scale",
-    defaultShortcut: "⌘ + +",
-    fixedKeys: "⌘ +",
-    customKey: "+",
-  },
-  {
-    id: "decrease-ui",
-    group: "Settings",
-    action: "Decrease UI Scale",
-    defaultShortcut: "⌘ + -",
-    fixedKeys: "⌘ +",
-    customKey: "-",
-  },
-  {
-    id: "reset-ui",
-    group: "Settings",
-    action: "Reset UI Scale",
-    defaultShortcut: "⌘ + 0",
-    fixedKeys: "⌘ +",
-    customKey: "0",
-  },
-];
 
 const groups: ShortcutItem["group"][] = ["Zoom", "Profiles", "Settings"];
 
-function ShortcutsPage() {
-  const [shortcuts, setShortcuts] = useState(initialShortcuts);
-
+function ShortcutsPage({ shortcuts, onChange }: ShortcutsPageProps) {
   const updateShortcut = (id: string, value: string) => {
-    setShortcuts((current) =>
-      current.map((shortcut) =>
+    onChange(
+      shortcuts.map((shortcut) =>
         shortcut.id === id
           ? { ...shortcut, customKey: value.slice(-3).toUpperCase() }
           : shortcut
@@ -100,7 +19,9 @@ function ShortcutsPage() {
   };
 
   const isFixedShortcut = (shortcut: ShortcutItem) =>
-    shortcut.id === "fast-zoom-levels" || shortcut.id === "smooth-zoom";
+    shortcut.id === "fast-zoom-levels" ||
+    shortcut.id === "smooth-zoom" ||
+    shortcut.group === "Profiles";
 
   return (
     <>

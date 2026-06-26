@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { ZoomSettingsState } from "../types/app";
 
-type ZoomType = "Full Screen" | "Picture-in-Picture" | "Zoom Window";
+interface ZoomPageProps {
+  settings: ZoomSettingsState;
+  onChange: (settings: ZoomSettingsState) => void;
+}
 
-function ZoomPage() {
-  const [zoomType, setZoomType] = useState<ZoomType>("Full Screen");
-  const [maxZoom, setMaxZoom] = useState(300);
+function ZoomPage({ settings, onChange }: ZoomPageProps) {
+  const updateSettings = (changes: Partial<ZoomSettingsState>) => {
+    onChange({ ...settings, ...changes });
+  };
 
   return (
     <>
@@ -12,12 +16,12 @@ function ZoomPage() {
         <h3>Zoom Type</h3>
 
         <div className="zoom-type-options">
-          {(["Full Screen", "Picture-in-Picture", "Zoom Window"] as ZoomType[]).map(
+          {(["Full Screen", "Picture-in-Picture", "Zoom Window"] as const).map(
             (type) => (
               <button
                 key={type}
-                className={`option-button ${zoomType === type ? "active" : ""}`}
-                onClick={() => setZoomType(type)}
+                className={`option-button ${settings.zoomType === type ? "active" : ""}`}
+                onClick={() => updateSettings({ zoomType: type })}
               >
                 {type}
               </button>
@@ -40,7 +44,7 @@ function ZoomPage() {
             </p>
           </div>
 
-          <span className="value-pill">{maxZoom}%</span>
+          <span className="value-pill">{settings.maxZoom}%</span>
         </div>
 
         <div className="zoom-max-control">
@@ -51,8 +55,8 @@ function ZoomPage() {
             min="100"
             max="1000"
             step="50"
-            value={maxZoom}
-            onChange={(event) => setMaxZoom(Number(event.target.value))}
+            value={settings.maxZoom}
+            onChange={(event) => updateSettings({ maxZoom: Number(event.target.value) })}
           />
         </div>
 
@@ -65,7 +69,7 @@ function ZoomPage() {
           {Array.from({ length: 10 }).map((_, index) => {
             const key = index === 9 ? "0" : String(index + 1);
             const step = index === 9 ? 10 : index + 1;
-            const value = Math.round((maxZoom / 10) * step);
+            const value = Math.round((settings.maxZoom / 10) * step);
 
             return (
               <div className="fast-zoom-card" key={key}>

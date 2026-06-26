@@ -5,7 +5,16 @@ import Sidebar from "./components/Sidebar";
 import QuickTools from "./components/QuickTools";
 import ProfilesPage from "./pages/ProfilesPage";
 
-import { MenuItem, Profile, Section } from "./types/app";
+import {
+  AppSettingsState,
+  MenuItem,
+  Profile,
+  ProfileSettingsState,
+  ReadingSettingsState,
+  Section,
+  ShortcutItem,
+  ZoomSettingsState,
+} from "./types/app";
 
 const menuItems: MenuItem[] = [
   { id: "zoom", label: "Zoom", description: "Fast and smooth magnification" },
@@ -35,12 +44,117 @@ const initialProfiles: Profile[] = [
   },
 ];
 
+const initialZoomSettings: ZoomSettingsState = {
+  zoomType: "Full Screen",
+  maxZoom: 300,
+  smoothZoomEnabled: true,
+  fastZoomEnabled: true,
+};
+
+const initialReadingSettings: ReadingSettingsState = {
+  isEnabled: true,
+  textSize: 24,
+  lineHeight: 1.7,
+  letterSpacing: 0.04,
+  readingWidth: 720,
+  backgroundMode: "dark",
+};
+
+const initialShortcutSettings: ShortcutItem[] = [
+  {
+    id: "fast-zoom-levels",
+    group: "Zoom",
+    action: "Fast Zoom Levels",
+    defaultShortcut: "⌥ + Shift + 0-9",
+    fixedKeys: "Fixed",
+    customKey: "",
+  },
+  {
+    id: "smooth-zoom",
+    group: "Zoom",
+    action: "Smooth Zoom",
+    defaultShortcut: "⌘ + Mouse Scroll",
+    fixedKeys: "Fixed",
+    customKey: "",
+  },
+  {
+    id: "zoom-type",
+    group: "Zoom",
+    action: "Change Zoom Type",
+    defaultShortcut: "⌘ + Option + Z",
+    fixedKeys: "⌘ + Option +",
+    customKey: "Z",
+  },
+  {
+    id: "reading-profile",
+    group: "Profiles",
+    action: "Open Reading Profile",
+    defaultShortcut: "Ctrl + Cmd + 1",
+    fixedKeys: "Fixed",
+    customKey: "",
+  },
+  {
+    id: "coding-profile",
+    group: "Profiles",
+    action: "Open Coding Profile",
+    defaultShortcut: "Ctrl + Cmd + 2",
+    fixedKeys: "Fixed",
+    customKey: "",
+  },
+  {
+    id: "browsing-profile",
+    group: "Profiles",
+    action: "Open Browsing Profile",
+    defaultShortcut: "Ctrl + Cmd + 3",
+    fixedKeys: "Fixed",
+    customKey: "",
+  },
+  {
+    id: "increase-ui",
+    group: "Settings",
+    action: "Increase UI Scale",
+    defaultShortcut: "⌘ + +",
+    fixedKeys: "⌘ +",
+    customKey: "+",
+  },
+  {
+    id: "decrease-ui",
+    group: "Settings",
+    action: "Decrease UI Scale",
+    defaultShortcut: "⌘ + -",
+    fixedKeys: "⌘ +",
+    customKey: "-",
+  },
+  {
+    id: "reset-ui",
+    group: "Settings",
+    action: "Reset UI Scale",
+    defaultShortcut: "⌘ + 0",
+    fixedKeys: "⌘ +",
+    customKey: "0",
+  },
+];
+
+const initialAppSettings: AppSettingsState = {
+  accessibilityIntegration: true,
+  startOnLogin: false,
+  defaultUiScale: 100,
+  highContrastUi: true,
+  reduceMotion: false,
+};
+
 function App() {
   const [activeSection, setActiveSection] = useState<Section>("zoom");
   const [uiScale, setUiScale] = useState(1);
   const [profiles, setProfiles] = useState<Profile[]>(initialProfiles);
   const [selectedProfileId, setSelectedProfileId] = useState<string>("coding");
   const [activeProfileId, setActiveProfileId] = useState<string>("coding");
+  const [profileSettings, setProfileSettings] = useState<ProfileSettingsState>({
+    zoomSettings: initialZoomSettings,
+    readingSettings: initialReadingSettings,
+    shortcutSettings: initialShortcutSettings,
+    appSettings: initialAppSettings,
+  });
 
   const increaseUiScale = () => {
     setUiScale((scale) => Math.min(1.6, Number((scale + 0.1).toFixed(1))));
@@ -119,6 +233,8 @@ function App() {
               setSelectedProfileId={setSelectedProfileId}
               activeProfileId={activeProfileId}
               setActiveProfileId={setActiveProfileId}
+              profileSettings={profileSettings}
+              setProfileSettings={setProfileSettings}
             />
           </div>
 

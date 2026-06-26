@@ -180,6 +180,33 @@
   cursor: not-allowed;
 }
 
+
+.profile-operation-message {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  max-width: 520px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.92);
+  font-size: 0.96em;
+  font-weight: 900;
+}
+
+.profile-operation-message.success {
+  border-color: rgba(74, 222, 128, 0.42);
+  color: #bbf7d0;
+  background: rgba(20, 83, 45, 0.32);
+}
+
+.profile-operation-message.error {
+  border-color: rgba(248, 113, 113, 0.42);
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.32);
+}
+
 @media (max-width: 1100px) {
   .profile-action-bar {
     align-items: flex-start;
@@ -195,4 +222,57 @@
     justify-content: flex-start;
   }
 
+}
+.profile-save-message {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: #67e8f9;
+  background: rgba(56, 189, 248, 0.14);
+  font-weight: 900;
+}
+
+.visionup-toast {
+  position: fixed;
+  top: 28px;
+  right: 28px;
+  z-index: 9999;
+  max-width: min(520px, calc(100vw - 56px));
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.98);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.48);
+  font-size: 1.05em;
+  font-weight: 950;
+  animation: visionup-toast-in 160ms ease-out;
+}
+
+.visionup-toast.success {
+  border-color: rgba(74, 222, 128, 0.72);
+  background: rgba(20, 83, 45, 0.98);
+  color: #dcfce7;
+}
+
+.visionup-toast.error {
+  border-color: rgba(248, 113, 113, 0.78);
+  background: rgba(127, 29, 29, 0.98);
+  color: #fee2e2;
+}
+
+@keyframes visionup-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

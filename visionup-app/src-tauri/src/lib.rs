@@ -2,7 +2,9 @@ mod commands;
 mod db;
 mod models;
 
-use commands::profile_commands::{create_profile, get_profiles};
+use commands::profile_commands::{
+    create_profile, delete_profile, get_profiles, save_profile_settings,
+};
 use db::DbPool;
 use tauri::State;
 
@@ -29,7 +31,9 @@ pub fn run() {
             .invoke_handler(tauri::generate_handler![
                 test_db_connection,
                 get_profiles,
-                create_profile
+                create_profile,
+                save_profile_settings,
+                delete_profile
             ])
             .run(tauri::generate_context!())
             .expect("error while running tauri application");

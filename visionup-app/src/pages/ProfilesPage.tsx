@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import {
   createProfile as createDbProfile,
+  deleteProfile as deleteDbProfile,
   getProfiles,
+  saveProfileSettings,
   type DbProfile,
 } from "../services/profileService";
-import { Profile, Section } from "../types/app";
+import { Profile, ProfileSettingsState, Section } from "../types/app";
 
 import ZoomPage from "./ZoomPage";
 import ShortcutsPage from "./ShortcutsPage";
@@ -14,15 +16,22 @@ import SettingsPage from "./SettingsPage";
 interface ProfilesPageProps {
   activeSection: Section;
   profiles: Profile[];
-  setProfiles: React.Dispatch<React.SetStateAction<Profile[]>>;
+  setProfiles: Dispatch<SetStateAction<Profile[]>>;
   selectedProfileId: string;
-  setSelectedProfileId: React.Dispatch<React.SetStateAction<string>>;
+  setSelectedProfileId: Dispatch<SetStateAction<string>>;
   activeProfileId: string;
-  setActiveProfileId: React.Dispatch<React.SetStateAction<string>>;
+  setActiveProfileId: Dispatch<SetStateAction<string>>;
+  profileSettings: ProfileSettingsState;
+  setProfileSettings: Dispatch<SetStateAction<ProfileSettingsState>>;
 }
 
 const MAX_PROFILE_COUNT = 9;
 const MAX_PROFILE_NAME_LENGTH = 15;
+
+type ToastState = {
+  type: "success" | "error";
+  message: string;
+} | null;
 
 function getNow() {
   return new Date().toISOString().slice(0, 16).replace("T", " ");
@@ -78,12 +87,18 @@ function ProfilesPage({
   setSelectedProfileId,
   activeProfileId: _activeProfileId,
   setActiveProfileId,
+  profileSettings,
+  setProfileSettings,
 }: ProfilesPageProps) {
   const [newProfileName, setNewProfileName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [draggingProfileId, setDraggingProfileId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toast, setToast] = useState<ToastState>(null);
+  const toastTimerRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const orderedProfiles = useMemo(() => normalizeProfileOrder(profiles), [profiles]);
@@ -91,6 +106,27 @@ function ProfilesPage({
     (profile) => profile.id === selectedProfileId
   );
   const canCreateProfile = orderedProfiles.length < MAX_PROFILE_COUNT;
+
+  const showToast = (type: "success" | "error", message: string) => {
+    if (toastTimerRef.current) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+
+    setToast({ type, message });
+
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 3200);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     async function loadProfilesFromDb() {
@@ -106,6 +142,7 @@ function ProfilesPage({
         setActiveProfileId(nextSelectedProfileId);
       } catch (error) {
         console.error("Failed to load profiles from DB:", error);
+        showToast("error", "Failed to load profiles.");
       }
     }
 
@@ -139,33 +176,69 @@ function ProfilesPage({
       selectProfile(profile.id);
       setNewProfileName("");
       setIsCreating(false);
+      showToast("success", "Profile created successfully.");
     } catch (error) {
       console.error("Failed to create profile:", error);
+      showToast("error", "Failed to create profile.");
     }
   };
 
-  const saveProfile = () => {
-    if (!selectedProfile) return;
+  const saveProfile = async () => {
+    if (!selectedProfile || isSaving) return;
 
-    setProfiles((current) =>
-      current.map((profile) =>
-        profile.id === selectedProfile.id
-          ? { ...profile, modifiedAt: getNow() }
-          : profile
-      )
-    );
+    setIsSaving(true);
+
+    try {
+      await saveProfileSettings(selectedProfile.id, profileSettings);
+
+      setProfiles((current) =>
+        current.map((profile) =>
+          profile.id === selectedProfile.id
+            ? { ...profile, modifiedAt: getNow() }
+            : profile
+        )
+      );
+
+      showToast("success", `${selectedProfile.name} profile saved successfully.`);
+    } catch (error) {
+      console.error("Failed to save profile settings:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      showToast("error", message || "Failed to save profile settings.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const deleteProfile = () => {
-    if (!selectedProfile) return;
+  const deleteProfile = async () => {
+    if (isDeleting) return;
 
-    const rest = normalizeProfileOrder(
-      profiles.filter((profile) => profile.id !== selectedProfile.id)
-    );
-    const next = rest[0];
+    if (!selectedProfile) {
+      showToast("error", "Select a profile before deleting.");
+      return;
+    }
 
-    setProfiles(rest);
-    selectProfile(next?.id ?? "");
+    const profileToDelete = selectedProfile;
+
+    setIsDeleting(true);
+    showToast("success", `Deleting ${profileToDelete.name} profile...`);
+
+    try {
+      await deleteDbProfile(profileToDelete.id);
+
+      const dbProfiles = await getProfiles();
+      const mappedProfiles = normalizeProfileOrder(dbProfiles.map(mapDbProfile));
+      const nextSelectedProfileId = mappedProfiles[0]?.id ?? "";
+
+      setProfiles(mappedProfiles);
+      selectProfile(nextSelectedProfileId);
+      showToast("success", `${profileToDelete.name} profile deleted successfully.`);
+    } catch (error) {
+      console.error("Failed to delete profile:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      showToast("error", message || "Failed to delete profile.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const startEditProfileName = (profile: Profile) => {
@@ -241,6 +314,7 @@ function ProfilesPage({
     link.click();
 
     URL.revokeObjectURL(url);
+    showToast("success", "Profiles exported successfully.");
   };
 
   const importProfiles = (file: File) => {
@@ -253,7 +327,10 @@ function ProfilesPage({
           ? imported
           : imported?.profiles;
 
-        if (!Array.isArray(importedProfiles)) return;
+        if (!Array.isArray(importedProfiles)) {
+          showToast("error", "Invalid profiles JSON file.");
+          return;
+        }
 
         const normalizedProfiles = normalizeProfileOrder(importedProfiles as Profile[]);
         const importedSelectedProfileId =
@@ -268,8 +345,10 @@ function ProfilesPage({
 
         setProfiles(normalizedProfiles);
         selectProfile(nextSelectedProfileId);
-      } catch {
-        console.error("Invalid profiles JSON");
+        showToast("success", "Profiles imported successfully.");
+      } catch (error) {
+        console.error("Invalid profiles JSON", error);
+        showToast("error", "Invalid profiles JSON file.");
       }
     };
 
@@ -386,22 +465,32 @@ function ProfilesPage({
             </div>
 
             <div className="profiles-header-actions">
-              <button className="secondary-button" onClick={saveProfile}>
-                Save
-              </button>
-
-              <button className="danger-button" onClick={deleteProfile}>
-                Delete
+              <button type="button" className="secondary-button" onClick={saveProfile} disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save"}
               </button>
 
               <button
+                type="button"
+                className="danger-button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  void deleteProfile();
+                }}
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+
+              <button
+                type="button"
                 className="secondary-button"
                 onClick={() => fileInputRef.current?.click()}
               >
                 Import
               </button>
 
-              <button className="secondary-button" onClick={exportProfiles}>
+              <button type="button" className="secondary-button" onClick={exportProfiles}>
                 Export
               </button>
 
@@ -413,16 +502,45 @@ function ProfilesPage({
                 onChange={(event) => {
                   const file = event.target.files?.[0];
                   if (file) importProfiles(file);
+                  event.currentTarget.value = "";
                 }}
               />
             </div>
           </div>
 
           <div className="profile-model-content">
-            {activeSection === "zoom" && <ZoomPage />}
-            {activeSection === "shortcuts" && <ShortcutsPage />}
-            {activeSection === "reading" && <ReadingPage />}
-            {activeSection === "settings" && <SettingsPage />}
+            {activeSection === "zoom" && (
+              <ZoomPage
+                settings={profileSettings.zoomSettings}
+                onChange={(zoomSettings) =>
+                  setProfileSettings((current) => ({ ...current, zoomSettings }))
+                }
+              />
+            )}
+            {activeSection === "shortcuts" && (
+              <ShortcutsPage
+                shortcuts={profileSettings.shortcutSettings}
+                onChange={(shortcutSettings) =>
+                  setProfileSettings((current) => ({ ...current, shortcutSettings }))
+                }
+              />
+            )}
+            {activeSection === "reading" && (
+              <ReadingPage
+                settings={profileSettings.readingSettings}
+                onChange={(readingSettings) =>
+                  setProfileSettings((current) => ({ ...current, readingSettings }))
+                }
+              />
+            )}
+            {activeSection === "settings" && (
+              <SettingsPage
+                settings={profileSettings.appSettings}
+                onChange={(appSettings) =>
+                  setProfileSettings((current) => ({ ...current, appSettings }))
+                }
+              />
+            )}
           </div>
         </>
       )}

@@ -1,16 +1,14 @@
-import { useState } from "react";
+import { AppSettingsState } from "../types/app";
 
-type ZoomType = "Full Screen" | "Picture-in-Picture" | "Zoom Window";
-type DefaultZoomMode = "Fast" | "Smooth";
+interface SettingsPageProps {
+  settings: AppSettingsState;
+  onChange: (settings: AppSettingsState) => void;
+}
 
-function SettingsPage() {
-  const [accessibilityIntegration, setAccessibilityIntegration] = useState(true);
-  const [startOnLogin, setStartOnLogin] = useState(false);
-  const [zoomType, setZoomType] = useState<ZoomType>("Full Screen");
-  const [defaultZoomMode, setDefaultZoomMode] = useState<DefaultZoomMode>("Fast");
-  const [defaultUiScale, setDefaultUiScale] = useState(100);
-  const [highContrastUi, setHighContrastUi] = useState(true);
-  const [reduceMotion, setReduceMotion] = useState(false);
+function SettingsPage({ settings, onChange }: SettingsPageProps) {
+  const updateSettings = (changes: Partial<AppSettingsState>) => {
+    onChange({ ...settings, ...changes });
+  };
 
   return (
     <>
@@ -35,10 +33,14 @@ function SettingsPage() {
             </div>
 
             <button
-              className={`toggle-button ${accessibilityIntegration ? "active" : ""}`}
-              onClick={() => setAccessibilityIntegration((value) => !value)}
+              className={`toggle-button ${settings.accessibilityIntegration ? "active" : ""}`}
+              onClick={() =>
+                updateSettings({
+                  accessibilityIntegration: !settings.accessibilityIntegration,
+                })
+              }
             >
-              {accessibilityIntegration ? "On" : "Off"}
+              {settings.accessibilityIntegration ? "On" : "Off"}
             </button>
           </div>
 
@@ -49,10 +51,10 @@ function SettingsPage() {
             </div>
 
             <button
-              className={`toggle-button ${startOnLogin ? "active" : ""}`}
-              onClick={() => setStartOnLogin((value) => !value)}
+              className={`toggle-button ${settings.startOnLogin ? "active" : ""}`}
+              onClick={() => updateSettings({ startOnLogin: !settings.startOnLogin })}
             >
-              {startOnLogin ? "On" : "Off"}
+              {settings.startOnLogin ? "On" : "Off"}
             </button>
           </div>
         </section>
@@ -63,7 +65,7 @@ function SettingsPage() {
           <div className="settings-row vertical">
             <div className="setting-title-row">
               <strong>Default UI Scale</strong>
-              <span className="value-pill">{defaultUiScale}%</span>
+              <span className="value-pill">{settings.defaultUiScale}%</span>
             </div>
 
             <input
@@ -71,8 +73,10 @@ function SettingsPage() {
               min="90"
               max="160"
               step="10"
-              value={defaultUiScale}
-              onChange={(event) => setDefaultUiScale(Number(event.target.value))}
+              value={settings.defaultUiScale}
+              onChange={(event) =>
+                updateSettings({ defaultUiScale: Number(event.target.value) })
+              }
             />
           </div>
 
@@ -83,10 +87,10 @@ function SettingsPage() {
             </div>
 
             <button
-              className={`toggle-button ${highContrastUi ? "active" : ""}`}
-              onClick={() => setHighContrastUi((value) => !value)}
+              className={`toggle-button ${settings.highContrastUi ? "active" : ""}`}
+              onClick={() => updateSettings({ highContrastUi: !settings.highContrastUi })}
             >
-              {highContrastUi ? "On" : "Off"}
+              {settings.highContrastUi ? "On" : "Off"}
             </button>
           </div>
 
@@ -97,10 +101,10 @@ function SettingsPage() {
             </div>
 
             <button
-              className={`toggle-button ${reduceMotion ? "active" : ""}`}
-              onClick={() => setReduceMotion((value) => !value)}
+              className={`toggle-button ${settings.reduceMotion ? "active" : ""}`}
+              onClick={() => updateSettings({ reduceMotion: !settings.reduceMotion })}
             >
-              {reduceMotion ? "On" : "Off"}
+              {settings.reduceMotion ? "On" : "Off"}
             </button>
           </div>
         </section>

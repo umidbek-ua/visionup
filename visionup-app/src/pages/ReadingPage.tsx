@@ -1,14 +1,14 @@
-import { useState } from "react";
+import { ReadingSettingsState } from "../types/app";
 
-type BackgroundMode = "dark" | "sepia" | "contrast";
+interface ReadingPageProps {
+  settings: ReadingSettingsState;
+  onChange: (settings: ReadingSettingsState) => void;
+}
 
-function ReadingPage() {
-  const [isReadingModeEnabled, setIsReadingModeEnabled] = useState(true);
-  const [textSize, setTextSize] = useState(24);
-  const [lineHeight, setLineHeight] = useState(1.7);
-  const [letterSpacing, setLetterSpacing] = useState(0.04);
-  const [readingWidth, setReadingWidth] = useState(720);
-  const [backgroundMode, setBackgroundMode] = useState<BackgroundMode>("dark");
+function ReadingPage({ settings, onChange }: ReadingPageProps) {
+  const updateSettings = (changes: Partial<ReadingSettingsState>) => {
+    onChange({ ...settings, ...changes });
+  };
 
   return (
     <>
@@ -22,10 +22,10 @@ function ReadingPage() {
         </div>
 
         <button
-          className={`reading-toggle ${isReadingModeEnabled ? "active" : ""}`}
-          onClick={() => setIsReadingModeEnabled((value) => !value)}
+          className={`reading-toggle ${settings.isEnabled ? "active" : ""}`}
+          onClick={() => updateSettings({ isEnabled: !settings.isEnabled })}
         >
-          {isReadingModeEnabled ? "Enabled" : "Disabled"}
+          {settings.isEnabled ? "Enabled" : "Disabled"}
         </button>
       </div>
 
@@ -34,22 +34,22 @@ function ReadingPage() {
           <div className="reading-control-card">
             <div className="setting-title-row">
               <h3>Text Size</h3>
-              <span className="value-pill">{textSize}px</span>
+              <span className="value-pill">{settings.textSize}px</span>
             </div>
 
             <input
               type="range"
               min="18"
               max="42"
-              value={textSize}
-              onChange={(event) => setTextSize(Number(event.target.value))}
+              value={settings.textSize}
+              onChange={(event) => updateSettings({ textSize: Number(event.target.value) })}
             />
           </div>
 
           <div className="reading-control-card">
             <div className="setting-title-row">
               <h3>Line Height</h3>
-              <span className="value-pill">{lineHeight.toFixed(1)}</span>
+              <span className="value-pill">{settings.lineHeight.toFixed(1)}</span>
             </div>
 
             <input
@@ -57,15 +57,15 @@ function ReadingPage() {
               min="1.2"
               max="2.4"
               step="0.1"
-              value={lineHeight}
-              onChange={(event) => setLineHeight(Number(event.target.value))}
+              value={settings.lineHeight}
+              onChange={(event) => updateSettings({ lineHeight: Number(event.target.value) })}
             />
           </div>
 
           <div className="reading-control-card">
             <div className="setting-title-row">
               <h3>Letter Spacing</h3>
-              <span className="value-pill">{letterSpacing.toFixed(2)}em</span>
+              <span className="value-pill">{settings.letterSpacing.toFixed(2)}em</span>
             </div>
 
             <input
@@ -73,15 +73,15 @@ function ReadingPage() {
               min="0"
               max="0.12"
               step="0.01"
-              value={letterSpacing}
-              onChange={(event) => setLetterSpacing(Number(event.target.value))}
+              value={settings.letterSpacing}
+              onChange={(event) => updateSettings({ letterSpacing: Number(event.target.value) })}
             />
           </div>
 
           <div className="reading-control-card">
             <div className="setting-title-row">
               <h3>Reading Width</h3>
-              <span className="value-pill">{readingWidth}px</span>
+              <span className="value-pill">{settings.readingWidth}px</span>
             </div>
 
             <input
@@ -89,8 +89,8 @@ function ReadingPage() {
               min="480"
               max="980"
               step="20"
-              value={readingWidth}
-              onChange={(event) => setReadingWidth(Number(event.target.value))}
+              value={settings.readingWidth}
+              onChange={(event) => updateSettings({ readingWidth: Number(event.target.value) })}
             />
           </div>
 
@@ -99,22 +99,22 @@ function ReadingPage() {
 
             <div className="reading-mode-buttons">
               <button
-                className={backgroundMode === "dark" ? "active" : ""}
-                onClick={() => setBackgroundMode("dark")}
+                className={settings.backgroundMode === "dark" ? "active" : ""}
+                onClick={() => updateSettings({ backgroundMode: "dark" })}
               >
                 Dark
               </button>
 
               <button
-                className={backgroundMode === "sepia" ? "active" : ""}
-                onClick={() => setBackgroundMode("sepia")}
+                className={settings.backgroundMode === "sepia" ? "active" : ""}
+                onClick={() => updateSettings({ backgroundMode: "sepia" })}
               >
                 Sepia
               </button>
 
               <button
-                className={backgroundMode === "contrast" ? "active" : ""}
-                onClick={() => setBackgroundMode("contrast")}
+                className={settings.backgroundMode === "contrast" ? "active" : ""}
+                onClick={() => updateSettings({ backgroundMode: "contrast" })}
               >
                 High Contrast
               </button>
@@ -122,15 +122,15 @@ function ReadingPage() {
           </div>
         </section>
 
-        <section className={`reading-preview ${backgroundMode}`}>
+        <section className={`reading-preview ${settings.backgroundMode}`}>
           <div
             className="reading-preview-content"
             style={{
-              maxWidth: `${readingWidth}px`,
-              fontSize: `${textSize}px`,
-              lineHeight,
-              letterSpacing: `${letterSpacing}em`,
-              opacity: isReadingModeEnabled ? 1 : 0.45,
+              maxWidth: `${settings.readingWidth}px`,
+              fontSize: `${settings.textSize}px`,
+              lineHeight: settings.lineHeight,
+              letterSpacing: `${settings.letterSpacing}em`,
+              opacity: settings.isEnabled ? 1 : 0.45,
             }}
           >
             <h3>Preview Text</h3>
