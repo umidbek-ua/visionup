@@ -1,12 +1,21 @@
-import { Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
 import {
   createProfile as createDbProfile,
+  createProfileWithSettings,
   deleteProfile as deleteDbProfile,
+  getProfileSettings,
   getProfiles,
   saveProfileSettings,
   type DbProfile,
 } from "../services/profileService";
 import { Profile, ProfileSettingsState, Section } from "../types/app";
+import {
+  createProfileExportJson,
+  downloadTextFile,
+  parseImportedProfileJson,
+  readFileAsText,
+  toProfileExportFileName,
+} from "../utils/profileJson";
 
 import ZoomPage from "./ZoomPage";
 import ShortcutsPage from "./ShortcutsPage";
@@ -39,6 +48,34 @@ function getNow() {
 
 function sanitizeProfileName(value: string) {
   return value.replace(/[^\p{L}\p{N}]/gu, "").slice(0, MAX_PROFILE_NAME_LENGTH);
+}
+
+
+function buildImportedProfileName(baseName: string, existingProfiles: Profile[]) {
+  const fallbackName = "Imported";
+  const sanitizedBaseName = sanitizeProfileName(baseName) || fallbackName;
+  const existingNames = new Set(
+    existingProfiles.map((profile) => profile.name.toLowerCase())
+  );
+
+  if (!existingNames.has(sanitizedBaseName.toLowerCase())) {
+    return sanitizedBaseName;
+  }
+
+  for (let index = 2; index <= MAX_PROFILE_COUNT; index += 1) {
+    const suffix = String(index);
+    const maxBaseLength = MAX_PROFILE_NAME_LENGTH - suffix.length;
+    const candidate = `${sanitizedBaseName.slice(0, maxBaseLength)}${suffix}`;
+
+    if (!existingNames.has(candidate.toLowerCase())) {
+      return candidate;
+    }
+  }
+
+  return `${fallbackName}${Date.now().toString().slice(-4)}`.slice(
+    0,
+    MAX_PROFILE_NAME_LENGTH
+  );
 }
 
 function getProfileOrder(profile: Profile) {
@@ -97,9 +134,11 @@ function ProfilesPage({
   const [draggingProfileId, setDraggingProfileId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   const toastTimerRef = useRef<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const settingsRequestIdRef = useRef(0);
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const orderedProfiles = useMemo(() => normalizeProfileOrder(profiles), [profiles]);
   const selectedProfile = orderedProfiles.find(
@@ -148,6 +187,40 @@ function ProfilesPage({
 
     loadProfilesFromDb();
   }, [setProfiles, setSelectedProfileId, setActiveProfileId]);
+
+  useEffect(() => {
+    if (!selectedProfileId) return;
+
+    const requestId = settingsRequestIdRef.current + 1;
+    settingsRequestIdRef.current = requestId;
+
+    async function loadSelectedProfileSettings() {
+      setIsLoadingSettings(true);
+
+      try {
+        const settings = await getProfileSettings(selectedProfileId);
+
+        if (settingsRequestIdRef.current === requestId) {
+          setProfileSettings(settings);
+        }
+      } catch (error) {
+        console.error("Failed to load selected profile settings:", error);
+
+        if (settingsRequestIdRef.current === requestId) {
+          showToast(
+            "error",
+            "Failed to load selected profile settings. Current settings are kept."
+          );
+        }
+      } finally {
+        if (settingsRequestIdRef.current === requestId) {
+          setIsLoadingSettings(false);
+        }
+      }
+    }
+
+    void loadSelectedProfileSettings();
+  }, [selectedProfileId, setProfileSettings]);
 
   const selectProfile = (profileId: string) => {
     setSelectedProfileId(profileId);
@@ -289,74 +362,85 @@ function ProfilesPage({
     });
   };
 
-  const exportProfiles = () => {
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            selectedProfileId,
-            profiles: orderedProfiles,
-          },
-          null,
-          2
-        ),
-      ],
-      {
-        type: "application/json",
-      }
-    );
+  const exportProfiles = async () => {
+    if (!selectedProfile) {
+      showToast("error", "Select a profile before exporting.");
+      return;
+    }
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    try {
+      const settings = await getProfileSettings(selectedProfile.id);
+      const json = createProfileExportJson(selectedProfile.name, settings);
+      const fileName = toProfileExportFileName(selectedProfile.name);
 
-    link.href = url;
-    link.download = "visionup-profiles.json";
-    link.click();
-
-    URL.revokeObjectURL(url);
-    showToast("success", "Profiles exported successfully.");
+      downloadTextFile(fileName, json);
+      showToast("success", `${selectedProfile.name} profile exported successfully.`);
+    } catch (error) {
+      console.error("Failed to export profile:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      showToast("error", message || "Failed to export profile.");
+    }
   };
 
-  const importProfiles = (file: File) => {
-    const reader = new FileReader();
+  const importProfiles = () => {
+    if (!canCreateProfile) {
+      showToast("error", `Maximum ${MAX_PROFILE_COUNT} profiles allowed.`);
+      return;
+    }
 
-    reader.onload = () => {
-      try {
-        const imported = JSON.parse(String(reader.result));
-        const importedProfiles = Array.isArray(imported)
-          ? imported
-          : imported?.profiles;
+    importFileInputRef.current?.click();
+  };
 
-        if (!Array.isArray(importedProfiles)) {
-          showToast("error", "Invalid profiles JSON file.");
-          return;
-        }
+  const handleImportProfileFile = async (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
 
-        const normalizedProfiles = normalizeProfileOrder(importedProfiles as Profile[]);
-        const importedSelectedProfileId =
-          typeof imported?.selectedProfileId === "string"
-            ? imported.selectedProfileId
-            : normalizedProfiles[0]?.id ?? "";
-        const nextSelectedProfileId =
-          normalizedProfiles.find((profile) => profile.id === importedSelectedProfileId)
-            ?.id ??
-          normalizedProfiles[0]?.id ??
-          "";
+    if (!file) return;
 
-        setProfiles(normalizedProfiles);
-        selectProfile(nextSelectedProfileId);
-        showToast("success", "Profiles imported successfully.");
-      } catch (error) {
-        console.error("Invalid profiles JSON", error);
-        showToast("error", "Invalid profiles JSON file.");
-      }
-    };
+    if (!canCreateProfile) {
+      showToast("error", `Maximum ${MAX_PROFILE_COUNT} profiles allowed.`);
+      return;
+    }
 
-    reader.readAsText(file);
+    try {
+      const jsonText = await readFileAsText(file);
+      const importedProfile = parseImportedProfileJson(jsonText);
+      const profileName = buildImportedProfileName(
+        importedProfile.profileName,
+        orderedProfiles
+      );
+
+      const dbProfile = await createProfileWithSettings(
+        profileName,
+        importedProfile.settings
+      );
+
+      const dbProfiles = await getProfiles();
+      const mappedProfiles = normalizeProfileOrder(dbProfiles.map(mapDbProfile));
+
+      setProfiles(mappedProfiles);
+      selectProfile(dbProfile.id);
+      setProfileSettings(importedProfile.settings);
+      showToast("success", `${profileName} profile imported successfully.`);
+    } catch (error) {
+      console.error("Failed to import profile:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      showToast("error", message || "Failed to import profile.");
+    }
   };
 
   return (
     <>
+      <input
+        ref={importFileInputRef}
+        type="file"
+        accept="application/json,.json"
+        hidden
+        onChange={handleImportProfileFile}
+      />
+
       <div className="profile-tabs">
         <button
           className="profile-add-tab"
@@ -465,8 +549,13 @@ function ProfilesPage({
             </div>
 
             <div className="profiles-header-actions">
-              <button type="button" className="secondary-button" onClick={saveProfile} disabled={isSaving}>
-                {isSaving ? "Saving..." : "Save"}
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={saveProfile}
+                disabled={isSaving || isLoadingSettings}
+              >
+                {isSaving ? "Saving..." : isLoadingSettings ? "Loading..." : "Save"}
               </button>
 
               <button
@@ -485,7 +574,8 @@ function ProfilesPage({
               <button
                 type="button"
                 className="secondary-button"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={importProfiles}
+                disabled={!canCreateProfile}
               >
                 Import
               </button>
@@ -493,18 +583,6 @@ function ProfilesPage({
               <button type="button" className="secondary-button" onClick={exportProfiles}>
                 Export
               </button>
-
-              <input
-                ref={fileInputRef}
-                hidden
-                type="file"
-                accept="application/json"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) importProfiles(file);
-                  event.currentTarget.value = "";
-                }}
-              />
             </div>
           </div>
 

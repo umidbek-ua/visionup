@@ -1,7 +1,7 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SaveProfileSettingsPayload {
     pub profile_id: Uuid,
     pub zoom_settings: SaveZoomSettingsPayload,
@@ -10,7 +10,7 @@ pub struct SaveProfileSettingsPayload {
     pub app_settings: SaveAppSettingsPayload,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SaveZoomSettingsPayload {
     pub zoom_type: String,
     pub max_zoom_percent: i32,
@@ -18,7 +18,7 @@ pub struct SaveZoomSettingsPayload {
     pub fast_zoom_enabled: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SaveReadingSettingsPayload {
     pub is_enabled: bool,
     pub text_size: i32,
@@ -28,7 +28,7 @@ pub struct SaveReadingSettingsPayload {
     pub background_mode: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SaveShortcutSettingsPayload {
     pub shortcut_scope: String,
     pub action_key: String,
@@ -37,7 +37,7 @@ pub struct SaveShortcutSettingsPayload {
     pub is_customizable: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SaveAppSettingsPayload {
     pub accessibility_integration_enabled: bool,
     pub start_on_login: bool,

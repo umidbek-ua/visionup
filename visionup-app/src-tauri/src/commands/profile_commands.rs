@@ -1,8 +1,12 @@
+use sqlx::Row;
 use tauri::State;
 
 use crate::db::DbPool;
 use crate::models::profile::Profile;
-use crate::models::settings::SaveProfileSettingsPayload;
+use crate::models::settings::{
+    SaveAppSettingsPayload, SaveProfileSettingsPayload, SaveReadingSettingsPayload,
+    SaveShortcutSettingsPayload, SaveZoomSettingsPayload,
+};
 
 #[tauri::command]
 pub async fn get_profiles(pool: State<'_, DbPool>) -> Result<Vec<Profile>, String> {
@@ -41,6 +45,162 @@ pub async fn create_profile(
     .fetch_one(pool.inner())
     .await
     .map_err(|e| e.to_string())
+}
+
+
+#[tauri::command]
+pub async fn get_profile_settings(
+    pool: State<'_, DbPool>,
+    profile_id: String,
+) -> Result<SaveProfileSettingsPayload, String> {
+    let profile_uuid = parse_profile_uuid(&profile_id)?;
+
+    let profile_exists = sqlx::query(
+        r#"
+        SELECT id
+        FROM profiles
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(profile_uuid)
+    .fetch_optional(pool.inner())
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if profile_exists.is_none() {
+        return Err("Profile not found".to_string());
+    }
+
+    let zoom_settings = if let Some(row) = sqlx::query(
+        r#"
+        SELECT
+            zoom_type,
+            max_zoom_percent,
+            smooth_zoom_enabled,
+            fast_zoom_enabled
+        FROM zoom_settings
+        WHERE profile_id = $1
+        ORDER BY updated_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(profile_uuid)
+    .fetch_optional(pool.inner())
+    .await
+    .map_err(|e| e.to_string())?
+    {
+        SaveZoomSettingsPayload {
+            zoom_type: map_zoom_type_from_db(row.try_get::<String, _>("zoom_type").map_err(|e| e.to_string())?.as_str())?,
+            max_zoom_percent: row.try_get("max_zoom_percent").map_err(|e| e.to_string())?,
+            smooth_zoom_enabled: row.try_get("smooth_zoom_enabled").map_err(|e| e.to_string())?,
+            fast_zoom_enabled: row.try_get("fast_zoom_enabled").map_err(|e| e.to_string())?,
+        }
+    } else {
+        default_zoom_settings()
+    };
+
+    let reading_settings = if let Some(row) = sqlx::query(
+        r#"
+        SELECT
+            is_enabled,
+            text_size,
+            line_height::float8 AS line_height,
+            letter_spacing::float8 AS letter_spacing,
+            reading_width,
+            background_mode
+        FROM reading_settings
+        WHERE profile_id = $1
+        ORDER BY updated_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(profile_uuid)
+    .fetch_optional(pool.inner())
+    .await
+    .map_err(|e| e.to_string())?
+    {
+        SaveReadingSettingsPayload {
+            is_enabled: row.try_get("is_enabled").map_err(|e| e.to_string())?,
+            text_size: row.try_get("text_size").map_err(|e| e.to_string())?,
+            line_height: row.try_get("line_height").map_err(|e| e.to_string())?,
+            letter_spacing: row.try_get("letter_spacing").map_err(|e| e.to_string())?,
+            reading_width: row.try_get("reading_width").map_err(|e| e.to_string())?,
+            background_mode: map_background_mode_from_db(
+                row.try_get::<String, _>("background_mode").map_err(|e| e.to_string())?.as_str(),
+            )?,
+        }
+    } else {
+        default_reading_settings()
+    };
+
+    let shortcut_rows = sqlx::query(
+        r#"
+        SELECT
+            shortcut_scope,
+            action_key,
+            default_shortcut,
+            custom_shortcut,
+            is_customizable
+        FROM shortcut_settings
+        WHERE profile_id = $1
+        ORDER BY created_at ASC
+        "#,
+    )
+    .bind(profile_uuid)
+    .fetch_all(pool.inner())
+    .await
+    .map_err(|e| e.to_string())?;
+
+    let shortcut_settings = shortcut_rows
+        .into_iter()
+        .map(|row| {
+            Ok(SaveShortcutSettingsPayload {
+                shortcut_scope: map_shortcut_scope_from_db(
+                    row.try_get::<String, _>("shortcut_scope").map_err(|e| e.to_string())?.as_str(),
+                )?,
+                action_key: row.try_get("action_key").map_err(|e| e.to_string())?,
+                default_shortcut: row.try_get("default_shortcut").map_err(|e| e.to_string())?,
+                custom_shortcut: row.try_get("custom_shortcut").map_err(|e| e.to_string())?,
+                is_customizable: row.try_get("is_customizable").map_err(|e| e.to_string())?,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
+
+    let app_settings = if let Some(row) = sqlx::query(
+        r#"
+        SELECT
+            accessibility_integration_enabled,
+            start_on_login,
+            default_ui_scale,
+            high_contrast_ui,
+            reduce_motion
+        FROM app_settings
+        ORDER BY updated_at DESC
+        LIMIT 1
+        "#,
+    )
+    .fetch_optional(pool.inner())
+    .await
+    .map_err(|e| e.to_string())?
+    {
+        SaveAppSettingsPayload {
+            accessibility_integration_enabled: row.try_get("accessibility_integration_enabled").map_err(|e| e.to_string())?,
+            start_on_login: row.try_get("start_on_login").map_err(|e| e.to_string())?,
+            default_ui_scale: row.try_get("default_ui_scale").map_err(|e| e.to_string())?,
+            high_contrast_ui: row.try_get("high_contrast_ui").map_err(|e| e.to_string())?,
+            reduce_motion: row.try_get("reduce_motion").map_err(|e| e.to_string())?,
+        }
+    } else {
+        default_app_settings()
+    };
+
+    Ok(SaveProfileSettingsPayload {
+        profile_id: profile_uuid,
+        zoom_settings,
+        reading_settings,
+        shortcut_settings,
+        app_settings,
+    })
 }
 
 #[tauri::command]
@@ -257,6 +417,70 @@ pub async fn delete_profile(
     tx.commit().await.map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+
+fn parse_profile_uuid(profile_id: &str) -> Result<uuid::Uuid, String> {
+    uuid::Uuid::parse_str(profile_id.trim()).map_err(|_| "Invalid profile id".to_string())
+}
+
+fn default_zoom_settings() -> SaveZoomSettingsPayload {
+    SaveZoomSettingsPayload {
+        zoom_type: "Full Screen".to_string(),
+        max_zoom_percent: 300,
+        smooth_zoom_enabled: true,
+        fast_zoom_enabled: true,
+    }
+}
+
+fn default_reading_settings() -> SaveReadingSettingsPayload {
+    SaveReadingSettingsPayload {
+        is_enabled: true,
+        text_size: 24,
+        line_height: 1.7,
+        letter_spacing: 0.04,
+        reading_width: 720,
+        background_mode: "dark".to_string(),
+    }
+}
+
+fn default_app_settings() -> SaveAppSettingsPayload {
+    SaveAppSettingsPayload {
+        accessibility_integration_enabled: true,
+        start_on_login: false,
+        default_ui_scale: 100,
+        high_contrast_ui: true,
+        reduce_motion: false,
+    }
+}
+
+fn map_zoom_type_from_db(value: &str) -> Result<String, String> {
+    match value {
+        "FULL_SCREEN" => Ok("Full Screen".to_string()),
+        "PICTURE_IN_PICTURE" => Ok("Picture-in-Picture".to_string()),
+        "ZOOM_WINDOW" => Ok("Zoom Window".to_string()),
+        _ => Err(format!("Invalid zoom type from DB: {value}")),
+    }
+}
+
+fn map_background_mode_from_db(value: &str) -> Result<String, String> {
+    match value {
+        "DARK" => Ok("dark".to_string()),
+        "SEPIA" => Ok("sepia".to_string()),
+        "HIGH_CONTRAST" => Ok("contrast".to_string()),
+        _ => Err(format!("Invalid background mode from DB: {value}")),
+    }
+}
+
+fn map_shortcut_scope_from_db(value: &str) -> Result<String, String> {
+    match value {
+        "ZOOM" => Ok("Zoom".to_string()),
+        "PROFILE" => Ok("Profiles".to_string()),
+        "READING" => Ok("Reading".to_string()),
+        "SETTINGS" => Ok("Settings".to_string()),
+        "APP" => Ok("App".to_string()),
+        _ => Err(format!("Invalid shortcut scope from DB: {value}")),
+    }
 }
 
 fn map_zoom_type(value: &str) -> Result<&'static str, String> {

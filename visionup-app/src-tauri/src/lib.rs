@@ -3,7 +3,7 @@ mod db;
 mod models;
 
 use commands::profile_commands::{
-    create_profile, delete_profile, get_profiles, save_profile_settings,
+    create_profile, delete_profile, get_profile_settings, get_profiles, save_profile_settings,
 };
 use db::DbPool;
 use tauri::State;
@@ -32,6 +32,7 @@ pub fn run() {
                 test_db_connection,
                 get_profiles,
                 create_profile,
+                get_profile_settings,
                 save_profile_settings,
                 delete_profile
             ])
