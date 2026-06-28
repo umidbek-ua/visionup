@@ -1,0 +1,311 @@
+.visionup-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 3000;
+  width: min(440px, calc(100vw - 48px));
+  display: grid;
+  grid-template-columns: 44px 1fr 34px;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(18px);
+  animation: toast-slide-in 180ms ease-out;
+}
+
+.visionup-toast-success {
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.visionup-toast-error {
+  border-color: rgba(248, 113, 113, 0.55);
+}
+
+.visionup-toast-warning {
+  border-color: rgba(251, 191, 36, 0.55);
+}
+
+.visionup-toast-info {
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.visionup-toast-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  font-size: 1.25rem;
+  font-weight: 950;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.visionup-toast-success .visionup-toast-icon {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.18);
+}
+
+.visionup-toast-error .visionup-toast-icon {
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.2);
+}
+
+.visionup-toast-warning .visionup-toast-icon {
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.18);
+}
+
+.visionup-toast-info .visionup-toast-icon {
+  color: #67e8f9;
+  background: rgba(56, 189, 248, 0.18);
+}
+
+.visionup-toast-content {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.visionup-toast-content strong {
+  font-size: 1.06rem;
+  line-height: 1.25;
+}
+
+.visionup-toast-content span {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.visionup-toast-close {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.visionup-toast-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.profile-action-feedback {
+  flex: 1 1 420px;
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.profile-action-feedback-success {
+  border-color: rgba(34, 197, 94, 0.58);
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.24), rgba(15, 23, 42, 0.62));
+}
+
+.profile-action-feedback-error {
+  border-color: rgba(248, 113, 113, 0.62);
+  background: linear-gradient(135deg, rgba(220, 38, 38, 0.24), rgba(15, 23, 42, 0.62));
+}
+
+.profile-action-feedback-warning {
+  border-color: rgba(251, 191, 36, 0.62);
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.22), rgba(15, 23, 42, 0.62));
+}
+
+.profile-action-feedback-info {
+  border-color: rgba(56, 189, 248, 0.58);
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(15, 23, 42, 0.62));
+}
+
+.profile-action-feedback-icon {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  font-size: 1.2rem;
+  font-weight: 950;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.profile-action-feedback-success .profile-action-feedback-icon {
+  color: #86efac;
+  background: rgba(34, 197, 94, 0.2);
+}
+
+.profile-action-feedback-error .profile-action-feedback-icon {
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.2);
+}
+
+.profile-action-feedback-warning .profile-action-feedback-icon {
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.18);
+}
+
+.profile-action-feedback-info .profile-action-feedback-icon {
+  color: #67e8f9;
+  background: rgba(56, 189, 248, 0.18);
+}
+
+.profile-action-feedback h2 {
+  margin: 0;
+  font-size: 1.28rem;
+  line-height: 1.15;
+}
+
+.profile-action-feedback p {
+  margin: 5px 0 0;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.profile-action-feedback-placeholder {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.98rem;
+  font-weight: 750;
+}
+
+.profile-action-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #67e8f9;
+  animation: profile-action-spin 760ms linear infinite;
+}
+
+.delete-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 6, 23, 0.42);
+  backdrop-filter: blur(10px);
+}
+
+.delete-confirm-dialog {
+  width: min(580px, calc(100vw - 48px));
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 18px;
+  padding: 28px;
+  border-radius: 28px;
+  color: #ffffff;
+  background: rgba(15, 23, 42, 0.94);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.5);
+  animation: dialog-pop-in 160ms ease-out;
+}
+
+.delete-confirm-icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.18);
+  font-size: 1.45rem;
+  font-weight: 950;
+}
+
+.delete-confirm-content h2 {
+  margin: 0 0 12px;
+  font-size: 1.8rem;
+  line-height: 1.12;
+}
+
+.delete-confirm-content p {
+  margin: 0 0 7px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.delete-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.delete-confirm-actions .secondary-button,
+.delete-confirm-actions .danger-button {
+  min-width: 100px;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+}
+
+@keyframes dialog-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes profile-action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 1200px) {
+  .profile-action-feedback {
+    flex-basis: 100%;
+    order: 2;
+  }
+}
+
+@media (max-width: 720px) {
+  .visionup-toast {
+    left: 16px;
+    right: 16px;
+    top: 16px;
+    width: auto;
+  }
+
+  .delete-confirm-dialog {
+    grid-template-columns: 1fr;
+  }
+
+  .delete-confirm-actions {
+    flex-direction: column-reverse;
+  }
+}

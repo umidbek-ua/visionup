@@ -4,6 +4,7 @@ import "./App.css";
 import Sidebar from "./components/Sidebar";
 import QuickTools from "./components/QuickTools";
 import ProfilesPage from "./pages/ProfilesPage";
+import { ToastProvider } from "./hooks/useToast";
 
 import {
   AppSettingsState,
@@ -213,7 +214,8 @@ function App() {
   }, [profiles]);
 
   return (
-    <main className="app-shell" style={{ fontSize: `${uiScale * 1.08}rem` }}>
+    <ToastProvider>
+      <main className="app-shell" style={{ fontSize: `${uiScale * 1.08}rem` }}>
       <Sidebar
         uiScale={uiScale}
         activeSection={activeSection}
@@ -245,7 +247,8 @@ function App() {
           />
         </section>
       </section>
-    </main>
+      </main>
+    </ToastProvider>
   );
 }
 

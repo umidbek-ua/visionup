@@ -37,9 +37,19 @@ interface ProfilesPageProps {
 const MAX_PROFILE_COUNT = 9;
 const MAX_PROFILE_NAME_LENGTH = 15;
 
+type ToastType = "success" | "error" | "warning" | "info";
+
 type ToastState = {
-  type: "success" | "error";
-  message: string;
+  type: ToastType;
+  title: string;
+  message?: string;
+} | null;
+
+type ActionFeedbackState = {
+  type: ToastType;
+  title: string;
+  message?: string;
+  isBusy?: boolean;
 } | null;
 
 function getNow() {
@@ -136,7 +146,10 @@ function ProfilesPage({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedbackState>(null);
+  const [pendingDeleteProfile, setPendingDeleteProfile] = useState<Profile | null>(null);
   const toastTimerRef = useRef<number | null>(null);
+  const actionFeedbackTimerRef = useRef<number | null>(null);
   const settingsRequestIdRef = useRef(0);
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -146,23 +159,60 @@ function ProfilesPage({
   );
   const canCreateProfile = orderedProfiles.length < MAX_PROFILE_COUNT;
 
-  const showToast = (type: "success" | "error", message: string) => {
+  const showToast = (
+    type: ToastType,
+    title: string,
+    message?: string,
+    duration = 3600
+  ) => {
     if (toastTimerRef.current) {
       window.clearTimeout(toastTimerRef.current);
     }
 
-    setToast({ type, message });
+    setToast({ type, title, message });
 
     toastTimerRef.current = window.setTimeout(() => {
       setToast(null);
       toastTimerRef.current = null;
-    }, 3200);
+    }, duration);
+  };
+
+  const showActionFeedback = (
+    type: ToastType,
+    title: string,
+    message?: string,
+    options?: { isBusy?: boolean; duration?: number }
+  ) => {
+    if (actionFeedbackTimerRef.current) {
+      window.clearTimeout(actionFeedbackTimerRef.current);
+      actionFeedbackTimerRef.current = null;
+    }
+
+    setActionFeedback({
+      type,
+      title,
+      message,
+      isBusy: options?.isBusy ?? false,
+    });
+
+    const duration = options?.duration ?? (options?.isBusy ? 0 : 4200);
+
+    if (duration > 0) {
+      actionFeedbackTimerRef.current = window.setTimeout(() => {
+        setActionFeedback(null);
+        actionFeedbackTimerRef.current = null;
+      }, duration);
+    }
   };
 
   useEffect(() => {
     return () => {
       if (toastTimerRef.current) {
         window.clearTimeout(toastTimerRef.current);
+      }
+
+      if (actionFeedbackTimerRef.current) {
+        window.clearTimeout(actionFeedbackTimerRef.current);
       }
     };
   }, []);
@@ -181,7 +231,7 @@ function ProfilesPage({
         setActiveProfileId(nextSelectedProfileId);
       } catch (error) {
         console.error("Failed to load profiles from DB:", error);
-        showToast("error", "Failed to load profiles.");
+        showToast("error", "Failed to load profiles", "Please restart VisionUp or check the database connection.");
       }
     }
 
@@ -209,7 +259,8 @@ function ProfilesPage({
         if (settingsRequestIdRef.current === requestId) {
           showToast(
             "error",
-            "Failed to load selected profile settings. Current settings are kept."
+            "Failed to load profile settings",
+            "Current settings are kept."
           );
         }
       } finally {
@@ -249,10 +300,10 @@ function ProfilesPage({
       selectProfile(profile.id);
       setNewProfileName("");
       setIsCreating(false);
-      showToast("success", "Profile created successfully.");
+      showToast("success", "Profile created", `${name} is ready to use.`);
     } catch (error) {
       console.error("Failed to create profile:", error);
-      showToast("error", "Failed to create profile.");
+      showToast("error", "Failed to create profile", "Please try again.");
     }
   };
 
@@ -260,6 +311,12 @@ function ProfilesPage({
     if (!selectedProfile || isSaving) return;
 
     setIsSaving(true);
+    showActionFeedback(
+      "info",
+      "Saving profile...",
+      `${selectedProfile.name} settings are being saved.`,
+      { isBusy: true }
+    );
 
     try {
       await saveProfileSettings(selectedProfile.id, profileSettings);
@@ -272,28 +329,35 @@ function ProfilesPage({
         )
       );
 
-      showToast("success", `${selectedProfile.name} profile saved successfully.`);
+      showActionFeedback(
+        "success",
+        "Profile saved!",
+        `${selectedProfile.name} settings were saved successfully.`
+      );
     } catch (error) {
       console.error("Failed to save profile settings:", error);
       const message = error instanceof Error ? error.message : String(error);
-      showToast("error", message || "Failed to save profile settings.");
+      showActionFeedback("error", "Saving failed!", message || "Failed to save profile settings.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const deleteProfile = async () => {
-    if (isDeleting) return;
-
+  const requestDeleteProfile = () => {
     if (!selectedProfile) {
-      showToast("error", "Select a profile before deleting.");
+      showActionFeedback("warning", "No profile selected", "Select a profile before deleting.");
       return;
     }
 
-    const profileToDelete = selectedProfile;
+    setPendingDeleteProfile(selectedProfile);
+  };
+
+  const deleteProfile = async () => {
+    if (isDeleting || !pendingDeleteProfile) return;
+
+    const profileToDelete = pendingDeleteProfile;
 
     setIsDeleting(true);
-    showToast("success", `Deleting ${profileToDelete.name} profile...`);
 
     try {
       await deleteDbProfile(profileToDelete.id);
@@ -304,11 +368,16 @@ function ProfilesPage({
 
       setProfiles(mappedProfiles);
       selectProfile(nextSelectedProfileId);
-      showToast("success", `${profileToDelete.name} profile deleted successfully.`);
+      setPendingDeleteProfile(null);
+      showActionFeedback(
+        "success",
+        "Profile deleted!",
+        `${profileToDelete.name} and its settings were deleted successfully.`
+      );
     } catch (error) {
       console.error("Failed to delete profile:", error);
       const message = error instanceof Error ? error.message : String(error);
-      showToast("error", message || "Failed to delete profile.");
+      showActionFeedback("error", "Delete failed!", message || "Failed to delete profile.");
     } finally {
       setIsDeleting(false);
     }
@@ -364,9 +433,16 @@ function ProfilesPage({
 
   const exportProfiles = async () => {
     if (!selectedProfile) {
-      showToast("error", "Select a profile before exporting.");
+      showActionFeedback("warning", "No profile selected", "Select a profile before exporting.");
       return;
     }
+
+    showActionFeedback(
+      "info",
+      "Preparing export...",
+      `${selectedProfile.name} profile is being converted to JSON.`,
+      { isBusy: true }
+    );
 
     try {
       const settings = await getProfileSettings(selectedProfile.id);
@@ -374,17 +450,21 @@ function ProfilesPage({
       const fileName = toProfileExportFileName(selectedProfile.name);
 
       downloadTextFile(fileName, json);
-      showToast("success", `${selectedProfile.name} profile exported successfully.`);
+      showActionFeedback(
+        "success",
+        "Profile exported!",
+        `${fileName} was created successfully.`
+      );
     } catch (error) {
       console.error("Failed to export profile:", error);
       const message = error instanceof Error ? error.message : String(error);
-      showToast("error", message || "Failed to export profile.");
+      showActionFeedback("error", "Export failed!", message || "Failed to export profile.");
     }
   };
 
   const importProfiles = () => {
     if (!canCreateProfile) {
-      showToast("error", `Maximum ${MAX_PROFILE_COUNT} profiles allowed.`);
+      showActionFeedback("warning", "Profile limit reached", `Maximum ${MAX_PROFILE_COUNT} profiles allowed.`);
       return;
     }
 
@@ -400,9 +480,16 @@ function ProfilesPage({
     if (!file) return;
 
     if (!canCreateProfile) {
-      showToast("error", `Maximum ${MAX_PROFILE_COUNT} profiles allowed.`);
+      showActionFeedback("warning", "Profile limit reached", `Maximum ${MAX_PROFILE_COUNT} profiles allowed.`);
       return;
     }
+
+    showActionFeedback(
+      "info",
+      "Importing profile...",
+      "Reading JSON file and creating a new profile.",
+      { isBusy: true }
+    );
 
     try {
       const jsonText = await readFileAsText(file);
@@ -423,11 +510,15 @@ function ProfilesPage({
       setProfiles(mappedProfiles);
       selectProfile(dbProfile.id);
       setProfileSettings(importedProfile.settings);
-      showToast("success", `${profileName} profile imported successfully.`);
+      showActionFeedback(
+        "success",
+        "Profile imported!",
+        `${profileName} and its settings were imported successfully.`
+      );
     } catch (error) {
       console.error("Failed to import profile:", error);
       const message = error instanceof Error ? error.message : String(error);
-      showToast("error", message || "Failed to import profile.");
+      showActionFeedback("error", "Import failed!", message || "Failed to import profile.");
     }
   };
 
@@ -548,6 +639,39 @@ function ProfilesPage({
               <h3>- switch to profile. Max profiles count = 9</h3>
             </div>
 
+            <div
+              className={`profile-action-feedback ${
+                actionFeedback ? `profile-action-feedback-${actionFeedback.type}` : ""
+              }`}
+              role="status"
+              aria-live="polite"
+            >
+              {actionFeedback ? (
+                <>
+                  <div className="profile-action-feedback-icon">
+                    {actionFeedback.isBusy ? (
+                      <span className="profile-action-spinner" />
+                    ) : (
+                      <>
+                        {actionFeedback.type === "success" && "✓"}
+                        {actionFeedback.type === "error" && "!"}
+                        {actionFeedback.type === "warning" && "!"}
+                        {actionFeedback.type === "info" && "i"}
+                      </>
+                    )}
+                  </div>
+                  <div>
+                    <h2>{actionFeedback.title}</h2>
+                    {actionFeedback.message && <p>{actionFeedback.message}</p>}
+                  </div>
+                </>
+              ) : (
+                <span className="profile-action-feedback-placeholder">
+                  Ready for profile actions
+                </span>
+              )}
+            </div>
+
             <div className="profiles-header-actions">
               <button
                 type="button"
@@ -564,7 +688,7 @@ function ProfilesPage({
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  void deleteProfile();
+                  requestDeleteProfile();
                 }}
                 disabled={isDeleting}
               >
@@ -621,6 +745,64 @@ function ProfilesPage({
             )}
           </div>
         </>
+      )}
+
+
+      {toast && (
+        <div className={`visionup-toast visionup-toast-${toast.type}`} role="status" aria-live="polite">
+          <div className="visionup-toast-icon">
+            {toast.type === "success" && "✓"}
+            {toast.type === "error" && "!"}
+            {toast.type === "warning" && "!"}
+            {toast.type === "info" && "i"}
+          </div>
+          <div className="visionup-toast-content">
+            <strong>{toast.title}</strong>
+            {toast.message && <span>{toast.message}</span>}
+          </div>
+          <button
+            type="button"
+            className="visionup-toast-close"
+            aria-label="Close notification"
+            onClick={() => setToast(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {pendingDeleteProfile && (
+        <div className="delete-confirm-overlay" role="presentation">
+          <section className="delete-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-profile-title">
+            <div className="delete-confirm-icon">!</div>
+            <div className="delete-confirm-content">
+              <h2 id="delete-profile-title">Delete this profile?</h2>
+              <p>
+                {pendingDeleteProfile.name} profile and all related settings will be deleted.
+              </p>
+              <p>This action cannot be undone.</p>
+
+              <div className="delete-confirm-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setPendingDeleteProfile(null)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="danger-button"
+                  onClick={() => void deleteProfile()}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
       )}
     </>
   );
