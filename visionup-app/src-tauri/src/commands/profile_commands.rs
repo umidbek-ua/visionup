@@ -353,6 +353,64 @@ pub async fn save_profile_settings(
 }
 
 #[tauri::command]
+pub async fn save_zoom_settings(
+    pool: State<'_, DbPool>,
+    profile_id: String,
+    payload: SaveZoomSettingsPayload,
+) -> Result<(), String> {
+    let profile_uuid = parse_profile_uuid(&profile_id)?;
+    let zoom_type = map_zoom_type(&payload.zoom_type)?;
+    let mut tx = pool.begin().await.map_err(|e| e.to_string())?;
+
+    let profile_update = sqlx::query(
+        r#"
+        UPDATE profiles
+        SET updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(profile_uuid)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    if profile_update.rows_affected() == 0 {
+        return Err("Profile not found".to_string());
+    }
+
+    sqlx::query("DELETE FROM zoom_settings WHERE profile_id = $1")
+        .bind(profile_uuid)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    sqlx::query(
+        r#"
+        INSERT INTO zoom_settings (
+            profile_id,
+            zoom_type,
+            max_zoom_percent,
+            smooth_zoom_enabled,
+            fast_zoom_enabled
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        "#,
+    )
+    .bind(profile_uuid)
+    .bind(zoom_type)
+    .bind(payload.max_zoom_percent)
+    .bind(payload.smooth_zoom_enabled)
+    .bind(payload.fast_zoom_enabled)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| e.to_string())?;
+
+    tx.commit().await.map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn delete_profile(
     pool: State<'_, DbPool>,
     profile_id: String,

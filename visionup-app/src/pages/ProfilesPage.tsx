@@ -1,4 +1,4 @@
-import { ChangeEvent, Dispatch, SetStateAction, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, Dispatch, SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createProfile as createDbProfile,
   createProfileWithSettings,
@@ -6,9 +6,10 @@ import {
   getProfileSettings,
   getProfiles,
   saveProfileSettings,
+  saveZoomSettings,
   type DbProfile,
 } from "../services/profileService";
-import { Profile, ProfileSettingsState, Section } from "../types/app";
+import { Profile, ProfileSettingsState, Section, ZoomSettingsState } from "../types/app";
 import {
   createProfileExportJson,
   downloadTextFile,
@@ -36,6 +37,7 @@ interface ProfilesPageProps {
 
 const MAX_PROFILE_COUNT = 9;
 const MAX_PROFILE_NAME_LENGTH = 15;
+const ZOOM_SETTINGS_SAVE_DEBOUNCE_MS = 7000;
 
 type ToastType = "success" | "error" | "warning" | "info";
 
@@ -51,6 +53,12 @@ type ActionFeedbackState = {
   message?: string;
   isBusy?: boolean;
 } | null;
+
+type PendingZoomSettingsSave = {
+  profileId: string;
+  settings: ZoomSettingsState;
+  serializedSettings: string;
+};
 
 function getNow() {
   return new Date().toISOString().slice(0, 16).replace("T", " ");
@@ -145,6 +153,7 @@ function ProfilesPage({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [isZoomAutosaveReady, setIsZoomAutosaveReady] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   const [actionFeedback, setActionFeedback] = useState<ActionFeedbackState>(null);
   const [pendingDeleteProfile, setPendingDeleteProfile] = useState<Profile | null>(null);
@@ -152,12 +161,21 @@ function ProfilesPage({
   const actionFeedbackTimerRef = useRef<number | null>(null);
   const settingsRequestIdRef = useRef(0);
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
+  const zoomSettingsSaveTimerRef = useRef<number | null>(null);
+  const selectedProfileIdRef = useRef(selectedProfileId);
+  const lastPersistedZoomSettingsRef = useRef("");
+  const zoomSettingsSaveInFlightRef = useRef(false);
+  const queuedZoomSettingsSaveRef = useRef<PendingZoomSettingsSave | null>(null);
 
   const orderedProfiles = useMemo(() => normalizeProfileOrder(profiles), [profiles]);
   const selectedProfile = orderedProfiles.find(
     (profile) => profile.id === selectedProfileId
   );
   const canCreateProfile = orderedProfiles.length < MAX_PROFILE_COUNT;
+
+  useEffect(() => {
+    selectedProfileIdRef.current = selectedProfileId;
+  }, [selectedProfileId]);
 
   const showToast = (
     type: ToastType,
@@ -214,8 +232,55 @@ function ProfilesPage({
       if (actionFeedbackTimerRef.current) {
         window.clearTimeout(actionFeedbackTimerRef.current);
       }
+
+      if (zoomSettingsSaveTimerRef.current) {
+        window.clearTimeout(zoomSettingsSaveTimerRef.current);
+      }
     };
   }, []);
+
+  const runZoomSettingsSave = useCallback(
+    async (saveRequest: PendingZoomSettingsSave) => {
+      if (zoomSettingsSaveInFlightRef.current) {
+        queuedZoomSettingsSaveRef.current = saveRequest;
+        return;
+      }
+
+      zoomSettingsSaveInFlightRef.current = true;
+
+      try {
+        await saveZoomSettings(saveRequest.profileId, saveRequest.settings);
+
+        if (selectedProfileIdRef.current === saveRequest.profileId) {
+          lastPersistedZoomSettingsRef.current = saveRequest.serializedSettings;
+          setProfiles((current) =>
+            current.map((profile) =>
+              profile.id === saveRequest.profileId
+                ? { ...profile, modifiedAt: getNow() }
+                : profile
+            )
+          );
+        }
+      } catch (error) {
+        console.error("Failed to autosave zoom settings:", error);
+        const message = error instanceof Error ? error.message : String(error);
+        showToast("error", "Zoom autosave failed", message || "Failed to save zoom settings.");
+      } finally {
+        zoomSettingsSaveInFlightRef.current = false;
+
+        const queuedSaveRequest = queuedZoomSettingsSaveRef.current;
+        queuedZoomSettingsSaveRef.current = null;
+
+        if (
+          queuedSaveRequest &&
+          queuedSaveRequest.serializedSettings !== lastPersistedZoomSettingsRef.current
+        ) {
+          void runZoomSettingsSave(queuedSaveRequest);
+        }
+      }
+    },
+    [setProfiles]
+  );
 
   useEffect(() => {
     async function loadProfilesFromDb() {
@@ -243,6 +308,7 @@ function ProfilesPage({
 
     const requestId = settingsRequestIdRef.current + 1;
     settingsRequestIdRef.current = requestId;
+    setIsZoomAutosaveReady(false);
 
     async function loadSelectedProfileSettings() {
       setIsLoadingSettings(true);
@@ -251,7 +317,9 @@ function ProfilesPage({
         const settings = await getProfileSettings(selectedProfileId);
 
         if (settingsRequestIdRef.current === requestId) {
+          lastPersistedZoomSettingsRef.current = JSON.stringify(settings.zoomSettings);
           setProfileSettings(settings);
+          setIsZoomAutosaveReady(true);
         }
       } catch (error) {
         console.error("Failed to load selected profile settings:", error);
@@ -272,6 +340,40 @@ function ProfilesPage({
 
     void loadSelectedProfileSettings();
   }, [selectedProfileId, setProfileSettings]);
+
+  useEffect(() => {
+    if (!selectedProfileId || isLoadingSettings || !isZoomAutosaveReady) return;
+
+    const serializedSettings = JSON.stringify(profileSettings.zoomSettings);
+
+    if (serializedSettings === lastPersistedZoomSettingsRef.current) return;
+
+    if (zoomSettingsSaveTimerRef.current) {
+      window.clearTimeout(zoomSettingsSaveTimerRef.current);
+    }
+
+    zoomSettingsSaveTimerRef.current = window.setTimeout(() => {
+      zoomSettingsSaveTimerRef.current = null;
+      void runZoomSettingsSave({
+        profileId: selectedProfileId,
+        settings: profileSettings.zoomSettings,
+        serializedSettings,
+      });
+    }, ZOOM_SETTINGS_SAVE_DEBOUNCE_MS);
+
+    return () => {
+      if (zoomSettingsSaveTimerRef.current) {
+        window.clearTimeout(zoomSettingsSaveTimerRef.current);
+        zoomSettingsSaveTimerRef.current = null;
+      }
+    };
+  }, [
+    isLoadingSettings,
+    isZoomAutosaveReady,
+    profileSettings.zoomSettings,
+    runZoomSettingsSave,
+    selectedProfileId,
+  ]);
 
   const selectProfile = (profileId: string) => {
     setSelectedProfileId(profileId);
@@ -310,6 +412,11 @@ function ProfilesPage({
   const saveProfile = async () => {
     if (!selectedProfile || isSaving) return;
 
+    if (zoomSettingsSaveTimerRef.current) {
+      window.clearTimeout(zoomSettingsSaveTimerRef.current);
+      zoomSettingsSaveTimerRef.current = null;
+    }
+
     setIsSaving(true);
     showActionFeedback(
       "info",
@@ -320,6 +427,7 @@ function ProfilesPage({
 
     try {
       await saveProfileSettings(selectedProfile.id, profileSettings);
+      lastPersistedZoomSettingsRef.current = JSON.stringify(profileSettings.zoomSettings);
 
       setProfiles((current) =>
         current.map((profile) =>
@@ -570,6 +678,7 @@ function ProfilesPage({
           const isSelected = selectedProfileId === profile.id;
           const isEditing = editingProfileId === profile.id;
           const isDragging = draggingProfileId === profile.id;
+          const shortcut = getProfileShortcut(profile);
 
           return isEditing ? (
             <input
@@ -596,6 +705,8 @@ function ProfilesPage({
               className={`profile-tab ${isSelected ? "selected" : ""} ${
                 isDragging ? "dragging" : ""
               }`}
+              title={shortcut}
+              aria-label={`${profile.name}, ${shortcut}`}
               draggable
               onClick={() => selectProfile(profile.id)}
               onDoubleClick={() => startEditProfileName(profile)}

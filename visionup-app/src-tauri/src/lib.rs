@@ -4,6 +4,7 @@ mod models;
 
 use commands::profile_commands::{
     create_profile, delete_profile, get_profile_settings, get_profiles, save_profile_settings,
+    save_zoom_settings,
 };
 use db::DbPool;
 use tauri::State;
@@ -34,6 +35,7 @@ pub fn run() {
                 create_profile,
                 get_profile_settings,
                 save_profile_settings,
+                save_zoom_settings,
                 delete_profile
             ])
             .run(tauri::generate_context!())

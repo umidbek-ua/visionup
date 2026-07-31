@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { ProfileSettingsState } from "../types/app";
+import { ProfileSettingsState, ZoomSettingsState } from "../types/app";
 
 export type DbProfile = {
   id: string;
@@ -145,6 +145,21 @@ export async function saveProfileSettings(
         high_contrast_ui: settings.appSettings.highContrastUi,
         reduce_motion: settings.appSettings.reduceMotion,
       },
+    },
+  });
+}
+
+export async function saveZoomSettings(
+  profileId: string,
+  settings: ZoomSettingsState
+): Promise<void> {
+  await invoke("save_zoom_settings", {
+    profileId,
+    payload: {
+      zoom_type: settings.zoomType,
+      max_zoom_percent: settings.maxZoom,
+      smooth_zoom_enabled: settings.smoothZoomEnabled,
+      fast_zoom_enabled: settings.fastZoomEnabled,
     },
   });
 }
